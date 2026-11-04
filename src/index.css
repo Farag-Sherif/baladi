@@ -1,0 +1,182 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   BALADI DESIGN SYSTEM — tokens taken verbatim from the
+   brand guideline colour page (page 07):
+   Red    C0  M85 Y65 K0  → R232 G66 B73
+   Ink    C100 M95 Y35 K35 → R35 G37 B79
+   Yellow C0  M30 Y90 K0   → R251 G187 B33
+   Green  C80 M15 Y70 K0   → R30 G153 B108
+   ============================================================ */
+:root {
+  --baladi-red: #e84249;
+  --baladi-ink: #23254f;
+  --baladi-yellow: #fbbb21;
+  --baladi-green: #1e996c;
+  --baladi-cream: #fbf6ee;
+  --baladi-sand: #f2e6d5;
+
+  --paper: var(--baladi-cream);
+  --ink: var(--baladi-ink);
+  --accent: var(--baladi-red);
+  --accent-ink: #ffffff;
+  --accent-soft: #fce3e4;
+
+  --radius-card: 26px;
+  --shadow-card: 0 22px 60px -30px rgba(35, 37, 79, 0.45);
+  --shadow-float: 0 40px 90px -40px rgba(35, 37, 79, 0.55);
+  --hairline: rgba(35, 37, 79, 0.12);
+}
+
+/* Branch themes: cats = green world, dogs = red world.
+   Ink + yellow stay shared as the brand spine. */
+.theme-cat {
+  --accent: var(--baladi-green);
+  --accent-ink: #ffffff;
+  --accent-soft: #dff1e9;
+}
+.theme-dog {
+  --accent: var(--baladi-red);
+  --accent-ink: #ffffff;
+  --accent-soft: #fce3e4;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Montserrat', 'Gotham', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  html[dir='rtl'] body {
+    font-family: 'Cairo', 'Almarai', system-ui, sans-serif;
+  }
+  ::selection {
+    background: var(--baladi-yellow);
+    color: var(--baladi-ink);
+  }
+
+  /* Core brand color utility enforcement */
+  .text-cream { color: var(--baladi-cream) !important; }
+  .bg-cream { background-color: var(--baladi-cream) !important; }
+  .border-cream { border-color: var(--baladi-cream) !important; }
+  .text-ink { color: var(--baladi-ink) !important; }
+  .bg-ink { background-color: var(--baladi-ink) !important; color: var(--baladi-cream); }
+}
+
+@layer components {
+  .u-container {
+    width: 100%;
+    max-width: 1440px;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+  @media (min-width: 768px) {
+    .u-container { padding-inline: 2.5rem; }
+  }
+  @media (min-width: 1280px) {
+    .u-container { padding-inline: 4rem; }
+  }
+
+  /* Heavy display type — the wordmark voice */
+  .t-display {
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 0.95;
+    text-transform: uppercase;
+  }
+  html[dir='rtl'] .t-display {
+    text-transform: none;
+    letter-spacing: 0;
+    line-height: 1.15;
+  }
+  .t-eyebrow {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+  }
+  html[dir='rtl'] .t-eyebrow { letter-spacing: 0.12em; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    border-radius: 999px;
+    padding: 0.95rem 1.9rem;
+    font-weight: 800;
+    font-size: 0.95rem;
+    transition: transform 0.25s ease, background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+    will-change: transform;
+  }
+  .btn:active { transform: translateY(1px) scale(0.99); }
+  .btn-accent {
+    background: var(--accent);
+    color: var(--accent-ink);
+    box-shadow: 0 18px 40px -22px rgba(35, 37, 79, 0.6);
+  }
+  .btn-accent:hover { transform: translateY(-2px); }
+  .btn-ink { background: var(--baladi-ink); color: #fff; }
+  .btn-ink:hover { transform: translateY(-2px); }
+  .btn-yellow { background: var(--baladi-yellow); color: var(--baladi-ink); }
+  .btn-yellow:hover { transform: translateY(-2px); }
+  .btn-ghost {
+    border: 1.5px solid rgba(35, 37, 79, 0.22);
+    color: var(--baladi-ink);
+  }
+  .btn-ghost:hover { background: rgba(35, 37, 79, 0.05); }
+  .btn-outline-light { border: 1.5px solid rgba(255,255,255,0.45); color: #fff; }
+  .btn-outline-light:hover { background: rgba(255,255,255,0.12); }
+
+  .card {
+    background: #fff;
+    border-radius: var(--radius-card);
+    border: 1px solid var(--hairline);
+    box-shadow: var(--shadow-card);
+  }
+  .hairline { border-color: var(--hairline); }
+
+  /* Arch — the pack's semicircle silhouette */
+  .arch-top { border-radius: 999px 999px 26px 26px; }
+  .diamond { clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .perspective { perspective: 1200px; }
+  .preserve-3d { transform-style: preserve-3d; }
+  .grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.35;
+    background-image: radial-gradient(rgba(35, 37, 79, 0.16) 1px, transparent 1px);
+    background-size: 4px 4px;
+    mix-blend-mode: multiply;
+  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+/* brand scrollbar */
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: var(--baladi-cream); }
+::-webkit-scrollbar-thumb {
+  background: rgba(35, 37, 79, 0.35);
+  border-radius: 99px;
+  border: 3px solid var(--baladi-cream);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--baladi-ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
