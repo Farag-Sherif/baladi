@@ -198,39 +198,6 @@ export default function World({ species }: { species: Species }) {
         </div>
       </section>
 
-      {/* ── BRANCH IDENTITY BAND ───────────────────────────────── */}
-      <section className="relative overflow-hidden bg-ink py-16 text-cream md:py-20">
-        <ZigZagBand color="#FBBB21" height={20} className="absolute inset-x-0 top-0 opacity-60" />
-        <div className="u-container grid items-center gap-10 lg:grid-cols-2">
-          <div>
-            <p className="t-eyebrow text-baladi-yellow">{t('هوية المنتج', 'PRODUCT IDENTITY')}</p>
-            <h2 className="t-display mt-3 text-[clamp(1.7rem,3.6vw,2.8rem)] text-white">
-              {t('كل عالم', 'Each world')}<br />{t('بلونه', 'has its colour')}
-            </h2>
-            <p className="mt-4 max-w-md text-[14.5px] font-medium leading-relaxed text-cream/90">
-              {isCat
-                ? t('عالم القطط بأخضر البراند على أرضية كريمى، مع الأصفر والكحلى كلونين أساسيين للهوية.', 'The cats world runs on the brand green over cream, with yellow and ink as the shared identity colours.')
-                : t('عالم الكلاب بأحمر البراند على أرضية كريمى، مع الأصفر والكحلى كلونين أساسيين للهوية.', 'The dogs world runs on the brand red over cream, with yellow and ink as the shared identity colours.')}
-            </p>
-            <div className="mt-6 flex gap-2">
-              {['#E84249', '#23254F', '#FBBB21', '#1E996C', '#FBF6EE'].map((c) => (
-                <span key={c} className="h-9 w-9 rounded-lg border border-cream/20" style={{ background: c }} title={c} />
-              ))}
-            </div>
-          </div>
-          <div className="relative">
-            <div className={`relative overflow-hidden rounded-[30px] ${isCat ? 'bg-baladi-green' : 'bg-baladi-red'} p-8`}>
-              <GhostAnimal src={s.silhouette} className="-bottom-8 end-[-10%] h-[80%] w-auto" opacity={0.22} />
-              <div className="relative z-10 flex flex-col items-start gap-4">
-                <Mark tone={s.mark} white className="h-10" />
-                <p className="max-w-[26ch] text-[13px] font-bold leading-relaxed text-white/95">
-                  {t('نفس الحرف، نفس الزجزاجة، نفس النقطة — لون مختلف لكل حيوان.', 'Same letterforms, same zig-zag, same dot — a different colour for each animal.')}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* ── FAQ ────────────────────────────────────────────────── */}
       <section className="bg-cream py-16 md:py-20">
