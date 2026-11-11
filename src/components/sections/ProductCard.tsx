@@ -5,7 +5,7 @@ import { useLang } from '../../lib/lang';
 import { egp } from '../../lib/utils';
 import { useCart } from '../../store/cart';
 import Tilt3D from '../ui/Tilt3D';
-import { ZigZagBand } from '../brand/Ornaments';
+import { ZigZagBand, BaladiCatEmblem, BaladiDogEmblem } from '../brand/Ornaments';
 
 export default function ProductCard({ product }: { product: Product }) {
   const { t, lang } = useLang();
@@ -16,7 +16,7 @@ export default function ProductCard({ product }: { product: Product }) {
     <Tilt3D strength={9} className="relative h-full">
       <div
         className={`group relative flex h-full flex-col overflow-hidden rounded-[26px] border bg-white transition-shadow duration-300 hover:shadow-lift ${
-          isCat ? 'theme-cat border-baladi-green/20' : 'theme-dog border-baladi-red/20'
+          isCat ? 'theme-cat border-baladi-red/20' : 'theme-dog border-baladi-green/20'
         }`}
         style={{ boxShadow: 'var(--shadow-card)' }}
       >
@@ -24,31 +24,36 @@ export default function ProductCard({ product }: { product: Product }) {
         <div className="relative aspect-[4/5] overflow-hidden">
           <div
             className="absolute inset-0"
-            style={{ background: isCat ? 'linear-gradient(160deg,#E7F4EE,#FBF6EE 70%)' : 'linear-gradient(160deg,#FCE7E8,#FBF6EE 70%)' }}
+            style={{ background: isCat ? 'linear-gradient(160deg,#FCE7E8,#FBF6EE 70%)' : 'linear-gradient(160deg,#E7F4EE,#FBF6EE 70%)' }}
           />
-          <img
-            src={isCat ? '/brand/cat-silhouette.png' : '/brand/dog-silhouette.png'}
-            alt=""
-            aria-hidden="true"
-            className="absolute -bottom-4 end-[-6%] h-[62%] w-auto object-contain opacity-[0.10]"
-          />
+          <div className="pointer-events-none absolute -bottom-3 end-[-4%] h-[58%] aspect-square opacity-[0.14]">
+            {isCat ? (
+              <BaladiCatEmblem size={200} color="#E84249" tight={false} className="h-full w-full" />
+            ) : (
+              <BaladiDogEmblem size={200} color="#1E996C" tight={false} className="h-full w-full" />
+            )}
+          </div>
           {product.badge && (
-            <span className="absolute start-3 top-3 z-10 rounded-full bg-ink px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-cream">
+            <span className={`pointer-events-none absolute start-3 top-3 z-20 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-white ${
+              isCat ? 'bg-baladi-red' : 'bg-baladi-green'
+            }`}>
               {product.badge[lang]}
             </span>
           )}
-          <Link to={`/product/${product.slug}`} className="absolute inset-0 z-10 grid place-items-center p-6">
+          <Link to={`/product/${product.slug}`} className="absolute inset-0 z-10 flex items-center justify-center pt-10 pb-5 px-5">
             <img
               src={product.image}
               alt={product.name[lang]}
-              className="max-h-full w-auto object-contain drop-shadow-[0_26px_38px_rgba(35,37,79,0.28)] transition-transform duration-500 group-hover:scale-[1.05]"
+              className="h-full w-full max-h-full max-w-full object-contain object-center drop-shadow-[0_20px_30px_rgba(35,37,79,0.22)] transition-transform duration-500 group-hover:scale-[1.04]"
               loading="lazy"
             />
           </Link>
           <button
             type="button"
             onClick={() => add(product, 1)}
-            className="absolute bottom-3 end-3 z-20 grid h-11 w-11 place-items-center rounded-full bg-ink text-cream transition-transform hover:scale-105"
+            className={`absolute bottom-3 end-3 z-20 grid h-11 w-11 place-items-center rounded-full text-white transition-all hover:scale-105 shadow-md ${
+              isCat ? 'bg-baladi-red hover:bg-baladi-red/90' : 'bg-baladi-green hover:bg-baladi-green/90'
+            }`}
             aria-label={t('أضف للسلة', 'Add to cart')}
           >
             <Plus className="h-5 w-5" />
@@ -56,7 +61,7 @@ export default function ProductCard({ product }: { product: Product }) {
         </div>
 
         <div className="flex flex-1 flex-col p-4">
-          <p className={`t-eyebrow ${isCat ? 'text-baladi-green' : 'text-baladi-red'}`}>
+          <p className={`t-eyebrow ${isCat ? 'text-baladi-red' : 'text-baladi-green'}`}>
             {product.flavor[lang]} · {product.weight}
           </p>
           <Link to={`/product/${product.slug}`} className="mt-1.5">

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useCart, cartTotal, cartCount } from '../store/cart';
 import { useLang } from '../lib/lang';
 import { egp } from '../lib/utils';
-import { ZigZagBand } from '../components/brand/Ornaments';
+import { ZigZagBand, BaladiCatEmblem, BaladiDogEmblem } from '../components/brand/Ornaments';
 import { EGYPT_GOVERNORATES } from './CheckoutPage';
 
 export default function CartPage() {
@@ -33,12 +33,14 @@ export default function CartPage() {
             <p className="mt-1 text-sm font-semibold text-ink/70">
               {t('تصفح عالم القطط أو الكلاب واختر طعامك المفضل لأليفك', 'Explore cats or dogs worlds to find nutritious food')}
             </p>
-            <div className="mt-6 flex justify-center gap-3">
-              <Link to="/cats" className="btn btn-accent theme-cat">
-                {t('عالم القطط 🐱', 'Cats World 🐱')}
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Link to="/cats" className="btn btn-accent theme-cat inline-flex items-center gap-2">
+                <BaladiCatEmblem size={18} color="currentColor" />
+                <span>{t('عالم القطط', 'Cats World')}</span>
               </Link>
-              <Link to="/dogs" className="btn btn-accent theme-dog">
-                {t('عالم الكلاب 🐶', 'Dogs World 🐶')}
+              <Link to="/dogs" className="btn btn-accent theme-dog inline-flex items-center gap-2">
+                <BaladiDogEmblem size={18} color="currentColor" />
+                <span>{t('عالم الكلاب', 'Dogs World')}</span>
               </Link>
             </div>
           </div>
@@ -54,8 +56,8 @@ export default function CartPage() {
                     l.product.species === 'cats' ? 'theme-cat' : 'theme-dog'
                   } border-ink/10`}
                 >
-                  <div className="grid h-24 w-24 shrink-0 place-items-center rounded-2xl bg-cream">
-                    <img src={l.product.image} alt="" className="max-h-20 w-auto object-contain" />
+                  <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-cream p-1.5">
+                    <img src={l.product.image} alt="" className="h-full w-full object-contain" />
                   </div>
                   <div className="min-w-0 flex-1 text-start">
                     <Link

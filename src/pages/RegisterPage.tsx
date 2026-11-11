@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { User, Mail, Phone, Lock, Eye, EyeOff, UserPlus, CheckCircle2, AlertCircle, MapPin, Sparkles } from 'lucide-react';
 import { useAuth } from '../store/auth';
 import { useLang } from '../lib/lang';
-import { Mark, ZigZagBand, DiamondBadge } from '../components/brand/Ornaments';
+import { Mark, ZigZagBand, DiamondBadge, BaladiCatEmblem, BaladiDogEmblem, BaladiDuoEmblem } from '../components/brand/Ornaments';
 
 const GOVS = [
   { ar: 'الجيزة', en: 'Giza' },
@@ -224,29 +224,32 @@ export default function RegisterPage() {
                   <button
                     type="button"
                     onClick={() => setSpecies('cats')}
-                    className={`rounded-xl py-2.5 transition-colors ${
-                      species === 'cats' ? 'bg-baladi-green text-white shadow-sm' : 'hover:bg-cream'
+                    className={`inline-flex items-center justify-center gap-1.5 rounded-xl py-2.5 transition-colors ${
+                      species === 'cats' ? 'bg-baladi-red text-white shadow-sm' : 'hover:bg-cream'
                     }`}
                   >
-                    🐱 {t('قطط', 'Cats')}
+                    <BaladiCatEmblem size={17} color={species === 'cats' ? '#FFFFFF' : '#E84249'} />
+                    <span>{t('قطط', 'Cats')}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setSpecies('dogs')}
-                    className={`rounded-xl py-2.5 transition-colors ${
-                      species === 'dogs' ? 'bg-baladi-red text-white shadow-sm' : 'hover:bg-cream'
+                    className={`inline-flex items-center justify-center gap-1.5 rounded-xl py-2.5 transition-colors ${
+                      species === 'dogs' ? 'bg-baladi-green text-white shadow-sm' : 'hover:bg-cream'
                     }`}
                   >
-                    🐕 {t('كلاب', 'Dogs')}
+                    <BaladiDogEmblem size={17} color={species === 'dogs' ? '#FFFFFF' : '#1E996C'} />
+                    <span>{t('كلاب', 'Dogs')}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setSpecies('both')}
-                    className={`rounded-xl py-2.5 transition-colors ${
+                    className={`inline-flex items-center justify-center gap-1.5 rounded-xl py-2.5 transition-colors ${
                       species === 'both' ? 'bg-ink text-white shadow-sm' : 'hover:bg-cream'
                     }`}
                   >
-                    🐾 {t('كلاهما', 'Both')}
+                    <BaladiDuoEmblem size={15} color="currentColor" />
+                    <span>{t('كلاهما', 'Both')}</span>
                   </button>
                 </div>
               </div>

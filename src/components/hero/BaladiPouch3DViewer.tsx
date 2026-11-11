@@ -5,6 +5,105 @@ import { Rotate3d, Loader2 } from 'lucide-react';
 import { useLang } from '../../lib/lang';
 
 type WorldMode = 'both' | 'cats' | 'dogs';
+type PouchSpecies = 'cat' | 'dog';
+type PouchLang = 'ar' | 'en';
+
+interface PouchMaterialPair {
+  front: THREE.MeshStandardMaterial;
+  back: THREE.MeshStandardMaterial;
+}
+
+type PouchTextureBank = Record<
+  PouchSpecies,
+  Record<PouchLang, { front: THREE.Texture; back: THREE.Texture }>
+>;
+
+function loadPouchTexture(
+  loader: THREE.TextureLoader,
+  url: string,
+  anisotropy: number
+): THREE.Texture {
+  const tex = loader.load(url);
+  tex.flipY = false;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = anisotropy;
+  return tex;
+}
+
+function applyPouchTextures(
+  sceneGroup: THREE.Group,
+  frontTex: THREE.Texture,
+  backTex: THREE.Texture
+): PouchMaterialPair | null {
+  let pair: PouchMaterialPair | null = null;
+
+  sceneGroup.traverse((child) => {
+    if (!(child as THREE.Mesh).isMesh) return;
+    const mesh = child as THREE.Mesh;
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const artMat = mats.find((m) => m?.name === 'Pouch_Art_Front_And_Back') as
+      | THREE.MeshStandardMaterial
+      | undefined;
+
+    if (artMat) {
+      const frontMat = artMat.clone();
+      frontMat.map = frontTex;
+      frontMat.color.setHex(0xffffff);
+      frontMat.needsUpdate = true;
+
+      const backMat = artMat.clone();
+      backMat.map = backTex;
+      backMat.color.setHex(0xffffff);
+      backMat.needsUpdate = true;
+
+      artMat.dispose();
+
+      const posAttr = mesh.geometry.getAttribute('position');
+      const idxAttr = mesh.geometry.getIndex();
+
+      if (posAttr && idxAttr) {
+        const frontIndices: number[] = [];
+        const backIndices: number[] = [];
+
+        for (let i = 0; i < idxAttr.count; i += 3) {
+          const a = idxAttr.getX(i);
+          const b = idxAttr.getX(i + 1);
+          const c = idxAttr.getX(i + 2);
+          const zAvg = (posAttr.getZ(a) + posAttr.getZ(b) + posAttr.getZ(c)) / 3;
+
+          if (zAvg >= 0) {
+            frontIndices.push(a, b, c);
+          } else {
+            backIndices.push(a, b, c);
+          }
+        }
+
+        mesh.geometry.setIndex([...frontIndices, ...backIndices]);
+        mesh.geometry.clearGroups();
+        mesh.geometry.addGroup(0, frontIndices.length, 0);
+        mesh.geometry.addGroup(frontIndices.length, backIndices.length, 1);
+        mesh.material = [frontMat, backMat];
+      } else {
+        mesh.material = frontMat;
+      }
+
+      pair = { front: frontMat, back: backMat };
+      return;
+    }
+
+    mats.forEach((m) => {
+      if (m && m.name === 'Pouch_Side_Gusset') {
+        const gussetMat = m as THREE.MeshStandardMaterial;
+        gussetMat.color.setHex(0xe5ae18);
+        gussetMat.metalness = 0.42;
+        gussetMat.roughness = 0.28;
+        gussetMat.needsUpdate = true;
+      }
+    });
+  });
+
+  return pair;
+}
 
 interface BaladiPouch3DViewerProps {
   mode: WorldMode;
@@ -42,11 +141,33 @@ export default function BaladiPouch3DViewer({
   const dogPouchRef = useRef<THREE.Group | null>(null);
   const rootGroupRef = useRef<THREE.Group | null>(null);
   const pointLightRef = useRef<THREE.PointLight | null>(null);
+  const langRef = useRef<PouchLang>(lang === 'ar' ? 'ar' : 'en');
+  const textureBankRef = useRef<PouchTextureBank | null>(null);
+  const pouchMaterialsRef = useRef<Partial<Record<PouchSpecies, PouchMaterialPair>>>({});
+
+  useEffect(() => {
+    const nextLang: PouchLang = lang === 'ar' ? 'ar' : 'en';
+    langRef.current = nextLang;
+
+    const bank = textureBankRef.current;
+    if (!bank) return;
+
+    (['cat', 'dog'] as PouchSpecies[]).forEach((species) => {
+      const pair = pouchMaterialsRef.current[species];
+      if (!pair) return;
+      pair.front.map = bank[species][nextLang].front;
+      pair.back.map = bank[species][nextLang].back;
+      pair.front.needsUpdate = true;
+      pair.back.needsUpdate = true;
+    });
+  }, [lang]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
+
+    let disposed = false;
 
     let width = container.clientWidth || 520;
     let height = container.clientHeight || 580;
@@ -95,14 +216,52 @@ export default function BaladiPouch3DViewer({
     scene.add(rootGroup);
     rootGroupRef.current = rootGroup;
 
-    // 5. Load Both Models in Parallel
+    // 5. Load Both Models in Parallel & Apply Bilingual Front/Back Brand Artwork
+    const texLoader = new THREE.TextureLoader();
+    const maxAnisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy() || 1);
+
+    const textureBank: PouchTextureBank = {
+      cat: {
+        ar: {
+          front: loadPouchTexture(texLoader, '/brand/3d/cat-ar-front.png', maxAnisotropy),
+          back: loadPouchTexture(texLoader, '/brand/3d/cat-ar-back.png', maxAnisotropy),
+        },
+        en: {
+          front: loadPouchTexture(texLoader, '/brand/3d/cat-en-front.png', maxAnisotropy),
+          back: loadPouchTexture(texLoader, '/brand/3d/cat-en-back.png', maxAnisotropy),
+        },
+      },
+      dog: {
+        ar: {
+          front: loadPouchTexture(texLoader, '/brand/3d/dog-ar-front.png', maxAnisotropy),
+          back: loadPouchTexture(texLoader, '/brand/3d/dog-ar-back.png', maxAnisotropy),
+        },
+        en: {
+          front: loadPouchTexture(texLoader, '/brand/3d/dog-en-front.png', maxAnisotropy),
+          back: loadPouchTexture(texLoader, '/brand/3d/dog-en-back.png', maxAnisotropy),
+        },
+      },
+    };
+    textureBankRef.current = textureBank;
+
     const loader = new GLTFLoader();
     let loaded = 0;
     const checkAllLoaded = () => {
+      if (disposed) return;
       loaded++;
       if (loaded >= 2) {
         setIsLoading(false);
       }
+    };
+
+    const disposeGroup = (group: THREE.Group) => {
+      group.traverse((child) => {
+        if (!(child as THREE.Mesh).isMesh) return;
+        const mesh = child as THREE.Mesh;
+        mesh.geometry?.dispose();
+        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        mats.forEach((m) => m?.dispose());
+      });
     };
 
     // Load Cat GLB
@@ -110,6 +269,15 @@ export default function BaladiPouch3DViewer({
       '/brand/baladi_pouch_cat.glb',
       (gltf) => {
         const cat = gltf.scene;
+        if (disposed) {
+          disposeGroup(cat);
+          return;
+        }
+        const activeTex = textureBank.cat[langRef.current];
+        const pair = applyPouchTextures(cat, activeTex.front, activeTex.back);
+        if (pair) {
+          pouchMaterialsRef.current.cat = pair;
+        }
         cat.scale.set(0.9, 0.9, 0.9);
         rootGroup.add(cat);
         catPouchRef.current = cat;
@@ -127,6 +295,15 @@ export default function BaladiPouch3DViewer({
       '/brand/baladi_pouch_dog.glb',
       (gltf) => {
         const dog = gltf.scene;
+        if (disposed) {
+          disposeGroup(dog);
+          return;
+        }
+        const activeTex = textureBank.dog[langRef.current];
+        const pair = applyPouchTextures(dog, activeTex.front, activeTex.back);
+        if (pair) {
+          pouchMaterialsRef.current.dog = pair;
+        }
         dog.scale.set(0.001, 0.001, 0.001);
         dog.position.set(2, 0, -1);
         dog.visible = false;
@@ -217,9 +394,9 @@ export default function BaladiPouch3DViewer({
       if (pointLightRef.current) {
         const hex =
           currentMode === 'cats'
-            ? 0x1e996c
-            : currentMode === 'dogs'
             ? 0xe84249
+            : currentMode === 'dogs'
+            ? 0x1e996c
             : 0xfbbb21;
         pointLightRef.current.color.lerp(new THREE.Color(hex), 0.08);
       }
@@ -243,8 +420,21 @@ export default function BaladiPouch3DViewer({
     resizeObserver.observe(container);
 
     return () => {
+      disposed = true;
       cancelAnimationFrame(rafId);
       resizeObserver.disconnect();
+      if (catPouchRef.current) disposeGroup(catPouchRef.current);
+      if (dogPouchRef.current) disposeGroup(dogPouchRef.current);
+      (['cat', 'dog'] as PouchSpecies[]).forEach((species) => {
+        (['ar', 'en'] as PouchLang[]).forEach((lng) => {
+          textureBank[species][lng].front.dispose();
+          textureBank[species][lng].back.dispose();
+        });
+      });
+      textureBankRef.current = null;
+      pouchMaterialsRef.current = {};
+      catPouchRef.current = null;
+      dogPouchRef.current = null;
       renderer.dispose();
     };
   }, []); // Run setup once on mount

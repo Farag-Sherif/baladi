@@ -13,7 +13,7 @@ export default function Story() {
     <div className="pt-[68px] md:pt-[84px]">
       <section className="relative overflow-hidden bg-ink py-20 text-cream md:py-28">
         <ZigZagBand color="#FBBB21" height={22} className="absolute inset-x-0 top-0 opacity-70" />
-        <GhostAnimal src="/brand/dog-silhouette.png" className="-bottom-14 end-[-6%] h-[80%] w-auto" opacity={0.09} />
+        <GhostAnimal species="dogs" src="/brand/dog-silhouette.png" className="-bottom-14 end-[-6%] h-[80%] w-auto" opacity={0.09} />
         <LeafStem className="absolute start-6 top-24 hidden opacity-20 md:block" height={190} />
         <div className="u-container relative">
           <Reveal>
@@ -41,14 +41,14 @@ export default function Story() {
       <section id="standard" className="bg-cream py-16 md:py-24">
         <div className="u-container grid gap-10 lg:grid-cols-3">
           {[
-            { i: HeartHandshake, a: 'هدفنا', b: 'Our purpose', d: 'إطعام حيوانات الشارع طعام كامل ومغذّى، بسعر يقدر عليه اللى بيطعم.', e: 'Feed street animals complete, nourishing food at a price a feeder can carry.' },
-            { i: Leaf, a: 'التركيبة', b: 'The formula', d: 'دجاج وسمك، أرز وذرة، أوميجا ٣ و٦، وبدون مكسبات طعم صناعية.', e: 'Chicken and fish, rice and corn, omega 3 & 6, and no artificial flavour enhancers.' },
-            { i: ShieldCheck, a: 'المعايير', b: 'The standard', d: 'فيتامينات ومعادن مضافة بالنسب المقررة فى المواصفة المصرية ٣٢١٥/٢٠٠٢.', e: 'Vitamins and minerals added to the ratios set in Egyptian standard 3215/2002.' },
+            { i: HeartHandshake, ea: '٠١ · الرؤية', eb: '01 · PURPOSE', a: 'هدفنا', b: 'Our purpose', d: 'إطعام حيوانات الشارع طعام كامل ومغذّى، بسعر يقدر عليه اللى بيطعم.', e: 'Feed street animals complete, nourishing food at a price a feeder can carry.' },
+            { i: Leaf, ea: '٠٢ · المكونات', eb: '02 · FORMULA', a: 'التركيبة', b: 'The formula', d: 'دجاج وسمك، أرز وذرة، أوميجا ٣ و٦، وبدون مكسبات طعم صناعية.', e: 'Chicken and fish, rice and corn, omega 3 & 6, and no artificial flavour enhancers.' },
+            { i: ShieldCheck, ea: '٠٣ · المواصفة', eb: '03 · STANDARD', a: 'المعايير', b: 'The standard', d: 'فيتامينات ومعادن مضافة بالنسب المقررة فى المواصفة المصرية ٣٢١٥/٢٠٠٢.', e: 'Vitamins and minerals added to the ratios set in Egyptian standard 3215/2002.' },
           ].map((c, i) => (
             <Reveal key={i} delay={i * 0.08}>
               <div className="h-full rounded-[26px] border hairline bg-white p-7 shadow-soft">
                 <c.i className="h-6 w-6 text-baladi-red" strokeWidth={1.8} />
-                <p className="t-eyebrow mt-6 font-black text-ink/75">{t(c.b, c.a)}</p>
+                <p className="t-eyebrow mt-6 font-black text-ink/75">{t(c.ea, c.eb)}</p>
                 <h3 className="mt-2 text-lg font-black text-ink">{t(c.a, c.b)}</h3>
                 <p className="mt-2 text-[13.5px] font-medium leading-relaxed text-ink/80">{t(c.d, c.e)}</p>
               </div>
@@ -76,7 +76,7 @@ export default function Story() {
           <Reveal delay={0.1}>
             <Tilt3D strength={8}>
               <div className="relative overflow-hidden rounded-[30px] bg-baladi-yellow p-8">
-                <GhostAnimal src="/brand/cat-silhouette.png" className="-bottom-8 -start-10 h-[85%] w-auto" opacity={0.16} />
+                <GhostAnimal species="cats" src="/brand/cat-silhouette.png" color="#23254F" className="-bottom-8 -start-10 h-[85%] w-auto" opacity={0.14} />
                 <div className="relative z-10">
                   <Mark tone="red" className="h-10" />
                   <div className="mt-8 space-y-3">

@@ -5,7 +5,7 @@ import { PRODUCTS, type Product } from '../data/catalog';
 import { useLang } from '../lib/lang';
 import ProductCard from '../components/sections/ProductCard';
 import Reveal from '../components/ui/Reveal';
-import { Mark, ZigZagBand } from '../components/brand/Ornaments';
+import { Mark, ZigZagBand, BaladiCatEmblem, BaladiDogEmblem, BaladiDuoEmblem } from '../components/brand/Ornaments';
 
 const QUICK_TAGS = [
   { ar: 'طعام جاف للقطط', en: 'Cat dry food', query: 'قطط' },
@@ -146,23 +146,39 @@ export default function SearchPage() {
         <div className="mb-8 flex flex-col gap-4 rounded-[26px] border hairline bg-white p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             {[
-              { id: 'all', label: t('كل المنتجات', 'All Products') },
-              { id: 'cats', label: t('قطط 🐱', 'Cats 🐱') },
-              { id: 'dogs', label: t('كلاب 🐕', 'Dogs 🐕') },
-            ].map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => setSpeciesFilter(f.id as typeof speciesFilter)}
-                className={`rounded-full px-4 py-2 text-xs font-black transition-colors ${
-                  speciesFilter === f.id
-                    ? 'bg-ink text-white'
-                    : 'bg-cream/60 text-ink/80 hover:bg-cream hover:text-ink'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
+              { id: 'all', label: t('كل المنتجات', 'All Products'), Icon: BaladiDuoEmblem },
+              { id: 'cats', label: t('قطط', 'Cats'), Icon: BaladiCatEmblem },
+              { id: 'dogs', label: t('كلاب', 'Dogs'), Icon: BaladiDogEmblem },
+            ].map((f) => {
+              const active = speciesFilter === f.id;
+              const Icon = f.Icon;
+              const activeCls =
+                f.id === 'cats'
+                  ? 'bg-baladi-red text-white'
+                  : f.id === 'dogs'
+                  ? 'bg-baladi-green text-white'
+                  : 'bg-ink text-white';
+              const iconColor = active
+                ? '#FFFFFF'
+                : f.id === 'cats'
+                ? '#E84249'
+                : f.id === 'dogs'
+                ? '#1E996C'
+                : 'currentColor';
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setSpeciesFilter(f.id as typeof speciesFilter)}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-black transition-colors ${
+                    active ? activeCls : 'bg-cream/60 text-ink/80 hover:bg-cream hover:text-ink'
+                  }`}
+                >
+                  <Icon size={f.id === 'all' ? 15 : 17} color={iconColor} />
+                  <span>{f.label}</span>
+                </button>
+              );
+            })}
           </div>
 
           <div className="flex items-center gap-2">

@@ -68,7 +68,7 @@ export const SPECIES: Record<Species, {
     silhouette: '/brand/cat-silhouette.png',
     pouches: '/brand/pouch-cats.png',
     fact: { ar: 'بروتين ≥ ٢٢٪ · دهون ≥ ٩٪ · رطوبة ≤ ١٠٪', en: 'Protein ≥ 22% · Fat ≥ 9% · Moisture ≤ 10%' },
-    mark: 'green',
+    mark: 'red',
   },
   dogs: {
     slug: 'dogs',
@@ -83,7 +83,7 @@ export const SPECIES: Record<Species, {
     silhouette: '/brand/dog-silhouette.png',
     pouches: '/brand/pouch-dogs.png',
     fact: { ar: 'بروتين ≥ ٢٠٪ · دهون ≥ ٩٪ · ألياف ≤ ٤٪', en: 'Protein ≥ 20% · Fat ≥ 9% · Fibre ≤ 4%' },
-    mark: 'red',
+    mark: 'green',
   },
 };
 

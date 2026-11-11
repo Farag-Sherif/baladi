@@ -26,7 +26,7 @@ import { useCart } from '../store/cart';
 import { useLang } from '../lib/lang';
 import { egp } from '../lib/utils';
 import { PRODUCTS } from '../data/catalog';
-import { Mark, ZigZagBand, DiamondBadge } from '../components/brand/Ornaments';
+import { Mark, ZigZagBand, DiamondBadge, BaladiCatEmblem, BaladiDogEmblem, BaladiDuoEmblem, SpeciesAvatar } from '../components/brand/Ornaments';
 
 const GOVS = [
   { ar: 'الجيزة', en: 'Giza' },
@@ -39,7 +39,7 @@ const GOVS = [
   { ar: 'الأقصر', en: 'Luxor' },
 ];
 
-const AVATARS = ['🐾', '🐱', '🐈', '🐕', '🐶', '❤️', '🦁', '🌿'];
+const AVATARS = ['both', 'cat', 'dog', 'cat-badge', 'dog-badge', 'star'];
 
 export default function ProfilePage() {
   const { t, lang } = useLang();
@@ -70,7 +70,7 @@ export default function ProfilePage() {
   const [phone, setPhone] = useState(user?.phone || '');
   const [governorate, setGovernorate] = useState(user?.governorate || 'الجيزة');
   const [address, setAddress] = useState(user?.address || '');
-  const [avatar, setAvatar] = useState(user?.avatar || '🐾');
+  const [avatar, setAvatar] = useState(user?.avatar || 'both');
   const [preferredSpecies, setPreferredSpecies] = useState<'cats' | 'dogs' | 'both'>(
     user?.preferredSpecies || 'both'
   );
@@ -230,20 +230,31 @@ export default function ProfilePage() {
           <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-start">
               <div className="relative">
-                <div className="grid h-20 w-20 place-items-center rounded-3xl border-2 border-baladi-yellow bg-ink/80 text-4xl shadow-lift">
-                  {user.avatar || '🐾'}
+                <div className="grid h-20 w-20 place-items-center rounded-3xl border-2 border-baladi-yellow bg-ink/80 text-white shadow-lift">
+                  <SpeciesAvatar avatar={user.avatar} species={user.preferredSpecies} size={42} color="#FFFFFF" />
                 </div>
               </div>
 
               <div>
                 <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                   <h1 className="text-2xl font-black text-white md:text-3xl">{user.name}</h1>
-                  <span className="rounded-full bg-baladi-yellow px-2.5 py-0.5 text-xs font-black text-ink">
-                    {user.preferredSpecies === 'cats'
-                      ? t('محب القطط 🐱', 'Cat Lover 🐱')
-                      : user.preferredSpecies === 'dogs'
-                      ? t('محب الكلاب 🐕', 'Dog Lover 🐕')
-                      : t('صديق كل الحيوانات 🐾', 'Friend of All 🐾')}
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-baladi-yellow px-2.5 py-0.5 text-xs font-black text-ink">
+                    {user.preferredSpecies === 'cats' ? (
+                      <>
+                        <BaladiCatEmblem size={14} color="#23254F" />
+                        <span>{t('محب القطط', 'Cat Lover')}</span>
+                      </>
+                    ) : user.preferredSpecies === 'dogs' ? (
+                      <>
+                        <BaladiDogEmblem size={14} color="#23254F" />
+                        <span>{t('محب الكلاب', 'Dog Lover')}</span>
+                      </>
+                    ) : (
+                      <>
+                        <BaladiDuoEmblem size={13} color="#23254F" />
+                        <span>{t('صديق كل الحيوانات', 'Friend of All')}</span>
+                      </>
+                    )}
                   </span>
                 </div>
                 <div className="mt-1 flex flex-wrap items-center justify-center gap-4 text-xs font-bold text-cream/90 sm:justify-start">
@@ -373,13 +384,13 @@ export default function ProfilePage() {
                           key={av}
                           type="button"
                           onClick={() => setAvatar(av)}
-                          className={`grid h-11 w-11 place-items-center rounded-2xl text-xl transition-all ${
+                          className={`grid h-11 w-11 place-items-center rounded-2xl text-ink transition-all ${
                             avatar === av
                               ? 'scale-110 border-2 border-baladi-red bg-red-50 shadow-sm'
                               : 'border hairline bg-cream/50 hover:bg-white'
                           }`}
                         >
-                          {av}
+                          <SpeciesAvatar avatar={av} size={22} color="#23254F" />
                         </button>
                       ))}
                     </div>
@@ -463,23 +474,39 @@ export default function ProfilePage() {
                     </label>
                     <div className="mt-2 flex max-w-sm gap-2">
                       {[
-                        { id: 'cats', label: t('قطط 🐱', 'Cats 🐱') },
-                        { id: 'dogs', label: t('كلاب 🐕', 'Dogs 🐕') },
-                        { id: 'both', label: t('كلاهما 🐾', 'Both 🐾') },
-                      ].map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => setPreferredSpecies(item.id as 'cats' | 'dogs' | 'both')}
-                          className={`flex-1 rounded-2xl py-2.5 text-xs font-black transition-colors ${
-                            preferredSpecies === item.id
-                              ? 'bg-ink text-white'
-                              : 'border hairline bg-cream/50 text-ink/80 hover:bg-cream'
-                          }`}
-                        >
-                          {item.label}
-                        </button>
-                      ))}
+                        { id: 'cats', label: t('قطط', 'Cats'), Icon: BaladiCatEmblem },
+                        { id: 'dogs', label: t('كلاب', 'Dogs'), Icon: BaladiDogEmblem },
+                        { id: 'both', label: t('كلاهما', 'Both'), Icon: BaladiDuoEmblem },
+                      ].map((item) => {
+                        const active = preferredSpecies === item.id;
+                        const Icon = item.Icon;
+                        const activeCls =
+                          item.id === 'cats'
+                            ? 'bg-baladi-red text-white'
+                            : item.id === 'dogs'
+                            ? 'bg-baladi-green text-white'
+                            : 'bg-ink text-white';
+                        const iconColor = active
+                          ? '#FFFFFF'
+                          : item.id === 'cats'
+                          ? '#E84249'
+                          : item.id === 'dogs'
+                          ? '#1E996C'
+                          : 'currentColor';
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setPreferredSpecies(item.id as 'cats' | 'dogs' | 'both')}
+                            className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-2xl py-2.5 text-xs font-black transition-colors ${
+                              active ? activeCls : 'border hairline bg-cream/50 text-ink/80 hover:bg-cream'
+                            }`}
+                          >
+                            <Icon size={item.id === 'both' ? 15 : 17} color={iconColor} />
+                            <span>{item.label}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -631,20 +658,22 @@ export default function ProfilePage() {
                           <button
                             type="button"
                             onClick={() => setPetSpecies('cat')}
-                            className={`rounded-2xl py-2.5 text-xs font-black transition-colors ${
-                              petSpecies === 'cat' ? 'bg-baladi-green text-white' : 'border hairline bg-cream/50 text-ink/80'
+                            className={`inline-flex items-center justify-center gap-1.5 rounded-2xl py-2.5 text-xs font-black transition-colors ${
+                              petSpecies === 'cat' ? 'bg-baladi-red text-white' : 'border hairline bg-cream/50 text-ink/80'
                             }`}
                           >
-                            🐱 {t('قطة / قط', 'Cat')}
+                            <BaladiCatEmblem size={17} color={petSpecies === 'cat' ? '#FFFFFF' : '#E84249'} />
+                            <span>{t('قطة / قط', 'Cat')}</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => setPetSpecies('dog')}
-                            className={`rounded-2xl py-2.5 text-xs font-black transition-colors ${
-                              petSpecies === 'dog' ? 'bg-baladi-red text-white' : 'border hairline bg-cream/50 text-ink/80'
+                            className={`inline-flex items-center justify-center gap-1.5 rounded-2xl py-2.5 text-xs font-black transition-colors ${
+                              petSpecies === 'dog' ? 'bg-baladi-green text-white' : 'border hairline bg-cream/50 text-ink/80'
                             }`}
                           >
-                            🐕 {t('كلب', 'Dog')}
+                            <BaladiDogEmblem size={17} color={petSpecies === 'dog' ? '#FFFFFF' : '#1E996C'} />
+                            <span>{t('كلب', 'Dog')}</span>
                           </button>
                         </div>
                       </div>
@@ -705,22 +734,30 @@ export default function ProfilePage() {
                       <div
                         key={p.id}
                         className={`relative flex flex-col justify-between overflow-hidden rounded-[28px] border bg-white p-5 shadow-soft transition-all hover:shadow-lift ${
-                          isCat ? 'border-baladi-green/30' : 'border-baladi-red/30'
+                          isCat ? 'border-baladi-red/30' : 'border-baladi-green/30'
                         }`}
                       >
                         <div>
                           <div className="flex items-start justify-between">
                             <div className="flex items-center gap-3">
-                              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-cream text-2xl">
-                                {isCat ? '🐱' : '🐕'}
+                              <span
+                                className={`grid h-12 w-12 place-items-center rounded-2xl ${
+                                  isCat ? 'bg-baladi-red/10 text-baladi-red' : 'bg-baladi-green/10 text-baladi-green'
+                                }`}
+                              >
+                                {isCat ? (
+                                  <BaladiCatEmblem size={28} color="currentColor" />
+                                ) : (
+                                  <BaladiDogEmblem size={28} color="currentColor" />
+                                )}
                               </span>
                               <div>
                                 <h4 className="text-lg font-black text-ink">{p.name}</h4>
                                 <span
                                   className={`rounded-full px-2 py-0.5 text-[11px] font-black ${
                                     isCat
-                                      ? 'bg-baladi-green/10 text-baladi-green'
-                                      : 'bg-baladi-red/10 text-baladi-red'
+                                      ? 'bg-baladi-red/10 text-baladi-red'
+                                      : 'bg-baladi-green/10 text-baladi-green'
                                   }`}
                                 >
                                   {isCat ? t('قط بلدي', 'Baladi Cat') : t('كلب بلدي', 'Baladi Dog')}
@@ -757,7 +794,7 @@ export default function ProfilePage() {
                           <Link
                             to={isCat ? '/cats' : '/dogs'}
                             className={`inline-flex items-center gap-1.5 text-xs font-black ${
-                              isCat ? 'text-baladi-green hover:underline' : 'text-baladi-red hover:underline'
+                              isCat ? 'text-baladi-red hover:underline' : 'text-baladi-green hover:underline'
                             }`}
                           >
                             <span>{t('تسوق أكل مناسب لـ', 'Shop food for')} {p.name}</span>
@@ -859,6 +896,21 @@ export default function ProfilePage() {
                                 </div>
                               ))}
                             </div>
+
+                            {/* Shipping Integration Details */}
+                            {ord.shippingTrackingNumber && (
+                              <div className="mt-4 flex flex-wrap items-center justify-between gap-2.5 rounded-2xl bg-emerald-50/70 p-3 text-xs border border-baladi-green/30">
+                                <div className="flex items-center gap-2">
+                                  <Truck className="h-4 w-4 text-baladi-green shrink-0" />
+                                  <span className="font-extrabold text-ink">{ord.shippingCarrier || 'Porter Express (بورتر)'}:</span>
+                                  <span className="font-mono font-black text-baladi-red">{ord.shippingTrackingNumber}</span>
+                                </div>
+                                <div className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-0.5 text-[10.5px] font-black text-baladi-green shadow-xs">
+                                  <ShieldCheck className="h-3 w-3" />
+                                  <span>{t('ربط شركة الشحن مفعل', 'Porter Shipping Synced')}</span>
+                                </div>
+                              </div>
+                            )}
 
                             <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t hairline pt-4">
                               <div className="text-xs font-bold text-ink/75">

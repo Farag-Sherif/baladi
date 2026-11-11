@@ -4,7 +4,7 @@ import { Menu, Search, ShoppingBag, X, Globe2, User as UserIcon } from 'lucide-r
 import { useLang } from '../../lib/lang';
 import { useCart, cartCount } from '../../store/cart';
 import { useAuth } from '../../store/auth';
-import { Mark, ZigZagBand } from '../brand/Ornaments';
+import { Mark, ZigZagBand, SpeciesAvatar } from '../brand/Ornaments';
 import { cn } from '../../lib/utils';
 import SearchModal from './SearchModal';
 
@@ -118,8 +118,8 @@ export default function Header() {
             >
               {isAuthenticated && user ? (
                 <div className="flex items-center gap-1.5">
-                  <span className="grid h-6 w-6 place-items-center rounded-full bg-baladi-yellow text-xs shadow-sm">
-                    {user.avatar || '🐾'}
+                  <span className="grid h-6 w-6 place-items-center rounded-full bg-baladi-yellow text-ink shadow-sm">
+                    <SpeciesAvatar avatar={user.avatar} species={user.preferredSpecies} size={15} color="#23254F" />
                   </span>
                   <span className="hidden font-black md:inline-block max-w-[75px] truncate">
                     {user.name.split(' ')[0]}
@@ -193,8 +193,8 @@ export default function Header() {
               {isAuthenticated && user ? (
                 <div>
                   <div className="flex items-center gap-3">
-                    <span className="grid h-10 w-10 place-items-center rounded-2xl bg-baladi-yellow text-xl">
-                      {user.avatar || '🐾'}
+                    <span className="grid h-10 w-10 place-items-center rounded-2xl bg-baladi-yellow text-ink">
+                      <SpeciesAvatar avatar={user.avatar} species={user.preferredSpecies} size={22} color="#23254F" />
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-black text-ink">{user.name}</p>

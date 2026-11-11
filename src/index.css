@@ -30,17 +30,17 @@
   --hairline: rgba(35, 37, 79, 0.12);
 }
 
-/* Branch themes: cats = green world, dogs = red world.
-   Ink + yellow stay shared as the brand spine. */
+/* Branch themes: cats = red/coral world, dogs = green world.
+   Matching the authentic product packaging and social media identity. */
 .theme-cat {
-  --accent: var(--baladi-green);
-  --accent-ink: #ffffff;
-  --accent-soft: #dff1e9;
-}
-.theme-dog {
   --accent: var(--baladi-red);
   --accent-ink: #ffffff;
   --accent-soft: #fce3e4;
+}
+.theme-dog {
+  --accent: var(--baladi-green);
+  --accent-ink: #ffffff;
+  --accent-soft: #dff1e9;
 }
 
 @layer base {

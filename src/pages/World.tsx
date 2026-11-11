@@ -19,8 +19,8 @@ export default function World({ species }: { species: Species }) {
   const all = bySpecies(species);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
-  const accent = isCat ? 'text-baladi-green' : 'text-baladi-red';
-  const accentBg = isCat ? 'bg-baladi-green' : 'bg-baladi-red';
+  const accent = isCat ? 'text-baladi-red' : 'text-baladi-green';
+  const accentBg = isCat ? 'bg-baladi-red' : 'bg-baladi-green';
 
   const faqs = [
     {
@@ -56,9 +56,9 @@ export default function World({ species }: { species: Species }) {
   return (
     <div className={isCat ? 'theme-cat' : 'theme-dog'}>
       {/* ── WORLD HERO ─────────────────────────────────────────── */}
-      <section className={`relative overflow-hidden ${isCat ? 'bg-baladi-green' : 'bg-baladi-red'} pt-[68px] text-white md:pt-[84px]`}>
+      <section className={`relative overflow-hidden ${isCat ? 'bg-baladi-red' : 'bg-baladi-green'} pt-[68px] text-white md:pt-[84px]`}>
         <Thunder color="rgba(251,187,33,.85)" height={22} className="absolute inset-x-0 top-[68px] md:top-[84px]" />
-        <GhostAnimal src={s.silhouette} className="-bottom-16 end-[-8%] h-[95%] w-auto" opacity={0.18} />
+        <GhostAnimal species={species} src={s.silhouette} className="-bottom-16 end-[-8%] h-[95%] w-auto" opacity={0.18} />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(110deg, rgba(35,37,79,.34), transparent 60%)' }} />
         <LeafStem className="absolute start-8 top-32 hidden opacity-30 lg:block" color="#FBF6EE" height={160} />
 

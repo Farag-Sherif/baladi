@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { CourierStatus } from '../lib/shipping/types';
 
 export interface Pet {
   id: string;
@@ -42,6 +43,14 @@ export interface Order {
   total: number;
   governorate: string;
   address: string;
+  // Shipping Integration fields (Porter & Egyptian Couriers)
+  shippingCarrier?: string;
+  shippingTrackingNumber?: string;
+  shippingWaybill?: string;
+  shippingStatus?: CourierStatus;
+  shippingTrackingUrl?: string;
+  estimatedDelivery?: string;
+  porterSyncReady?: boolean;
 }
 
 export interface User {
@@ -92,7 +101,7 @@ const DEMO_USER: User = {
   phone: '01012345678',
   governorate: 'الجيزة',
   address: 'شارع الهرم، بجوار محطة المترو، عمارة 14 الدور 3',
-  avatar: '🐱',
+  avatar: 'cat',
   preferredSpecies: 'both',
   createdAt: '2024-03-15',
 };
@@ -222,7 +231,7 @@ export const useAuth = create<AuthState>()(
           phone: emailOrPhone.match(/^[0-9+]+$/) ? emailOrPhone : '01099887766',
           governorate: 'الجيزة',
           address: 'القاهرة والجيزة، مصر',
-          avatar: '🐾',
+          avatar: 'both',
           preferredSpecies: 'both',
           createdAt: new Date().toISOString().split('T')[0],
         };
@@ -245,7 +254,7 @@ export const useAuth = create<AuthState>()(
         const newUser: User = {
           ...data,
           id: 'usr_' + Date.now(),
-          avatar: data.preferredSpecies === 'cats' ? '🐱' : data.preferredSpecies === 'dogs' ? '🐕' : '🐾',
+          avatar: data.preferredSpecies === 'cats' ? 'cat' : data.preferredSpecies === 'dogs' ? 'dog' : 'both',
           createdAt: new Date().toISOString().split('T')[0],
         };
 

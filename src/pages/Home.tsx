@@ -6,7 +6,7 @@ import Reveal from '../components/ui/Reveal';
 import Tilt3D from '../components/ui/Tilt3D';
 import { useLang } from '../lib/lang';
 import { SPECIES, PRODUCTS, bySpecies } from '../data/catalog';
-import { Mark, ZigZagBand, DiamondBadge, LeafStem } from '../components/brand/Ornaments';
+import { Mark, ZigZagBand, DiamondBadge, LeafStem, BaladiDogEmblem, BaladiCatEmblem } from '../components/brand/Ornaments';
 import { GhostAnimal, Thunder } from '../components/brand/Ornaments2';
 
 export default function Home() {
@@ -48,17 +48,18 @@ export default function Home() {
                     <Link
                       to={`/${key}`}
                       className={`group relative flex min-h-[420px] flex-col overflow-hidden rounded-[34px] ${
-                        isCat ? 'theme-cat bg-baladi-green' : 'theme-dog bg-baladi-red'
+                        isCat ? 'theme-cat bg-baladi-red' : 'theme-dog bg-baladi-green'
                       }`}
                     >
                       <div className="absolute inset-0 opacity-[0.16] mix-blend-overlay" style={{ backgroundImage: 'radial-gradient(circle at 20% 10%, #fff 0%, transparent 45%)' }} />
                       <Thunder color="rgba(251,187,33,.9)" height={20} className="absolute inset-x-0 top-0" />
-                      <img
-                        src={s.silhouette}
-                        alt=""
-                        aria-hidden="true"
-                        className="absolute -bottom-10 end-[-6%] h-[78%] w-auto object-contain opacity-[0.22] transition-transform duration-700 group-hover:scale-105"
-                      />
+                      <div className="absolute -bottom-6 end-[-4%] opacity-20 transition-transform duration-700 group-hover:scale-110">
+                        {isCat ? (
+                          <BaladiCatEmblem size={220} color="#FFFFFF" />
+                        ) : (
+                          <BaladiDogEmblem size={220} color="#FFFFFF" />
+                        )}
+                      </div>
                       <div className="relative z-10 flex flex-1 flex-col p-8 md:p-10">
                         <div className="flex items-start justify-between">
                           <div>
@@ -88,7 +89,7 @@ export default function Home() {
       <section className="relative overflow-hidden bg-ink py-20 text-cream md:py-28">
         <ZigZagBand color="#FBBB21" height={24} className="absolute inset-x-0 top-0 opacity-70" />
         <LeafStem className="absolute end-6 top-16 hidden opacity-25 md:block" color="#FBF6EE" height={180} />
-        <GhostAnimal src="/brand/dog-silhouette.png" className="-bottom-16 -start-20 h-[70%] w-auto" opacity={0.07} />
+        <GhostAnimal species="dogs" src="/brand/dog-silhouette.png" className="-bottom-16 -start-20 h-[70%] w-auto" opacity={0.07} />
 
         <div className="u-container relative">
           <div className="grid items-center gap-14 lg:grid-cols-[1.05fr_0.95fr]">
@@ -170,7 +171,7 @@ export default function Home() {
             return (
               <div key={key} className={`relative overflow-hidden rounded-[30px] border hairline p-7 ${key === 'cats' ? 'theme-cat' : 'theme-dog'}`}>
                 <div className="flex items-center justify-between">
-                  <p className={`t-eyebrow ${key === 'cats' ? 'text-baladi-green' : 'text-baladi-red'}`}>{s.signature[lang]}</p>
+                  <p className={`t-eyebrow ${key === 'cats' ? 'text-baladi-red' : 'text-baladi-green'}`}>{s.signature[lang]}</p>
                   <Mark tone={s.mark} className="h-7" />
                 </div>
                 <div className="mt-6 space-y-2">

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useLang } from '../../lib/lang';
 import { Thunder } from '../brand/Ornaments2';
-import { ZigZagBand } from '../brand/Ornaments';
+import { ZigZagBand, BaladiCatEmblem, BaladiDogEmblem, BaladiDuoEmblem } from '../brand/Ornaments';
 import { cn } from '../../lib/utils';
 import BaladiPouch3DViewer from './BaladiPouch3DViewer';
 
@@ -59,7 +59,7 @@ const PACKS: Record<WorldMode, PackData> = {
     subtitleEn: 'Well fed lives a better life',
     descAr: 'تغذية مصرية ١٠٠٪ متكاملة للقطط والكلاب البلدية — دجاج حقيقي، فيتامينات ومعادن أساسية، وبدون أي مكسبات طعم صناعية. جودة تثق فيها وسعر في متناول اليد.',
     descEn: '100% Egyptian complete pet food for Baladi cats and dogs — real chicken, essential vitamins & minerals, zero artificial additives. Accessible premium quality.',
-    image: '/brand/baladi_front_texture_cat.png',
+    image: '/brand/pouch-duo.png',
     accentColor: '#FBBB21', // baladi-yellow
     glowColor: 'rgba(251, 187, 33, 0.45)',
     link: '/cats',
@@ -117,9 +117,9 @@ const PACKS: Record<WorldMode, PackData> = {
     subtitleEn: 'Real Chicken · 22% Protein · Renal Care',
     descAr: 'تركيبة غذائية متوازنة ومصممة خصيصاً لمناعة وصحة قطط مصر. دجاج حقيقي غني بالتورين والأوميجا وبدون أي مكسبات طعم صناعية.',
     descEn: 'Veterinary formula designed for the health and vitality of Egyptian cats. Real chicken, rich in taurine & omega, zero artificial flavors.',
-    image: '/brand/baladi_front_texture_cat.png',
-    accentColor: '#1E996C', // baladi-green
-    glowColor: 'rgba(30, 153, 108, 0.45)',
+    image: '/brand/pouch-cats.png',
+    accentColor: '#E84249', // baladi-red for cats
+    glowColor: 'rgba(232, 66, 73, 0.45)',
     link: '/cats',
     specs: [
       { labelAr: 'البروتين الخام', labelEn: 'Crude Protein', value: '22%' },
@@ -175,9 +175,9 @@ const PACKS: Record<WorldMode, PackData> = {
     subtitleEn: 'High Energy · Strong Bones · Easy Digest',
     descAr: 'وجبة متكاملة لكلاب الشارع والبيوت في مصر. غنية بالكالسيوم، الفوسفور، والبروتينات لبناء عضلات قوية ومناعة حديدية ضد الأمراض.',
     descEn: 'Complete daily meal for Egyptian dogs. Packed with calcium, phosphorus, and essential proteins for strong bones and unbreakable immunity.',
-    image: '/brand/baladi_front_texture_dog.png',
-    accentColor: '#E84249', // baladi-red
-    glowColor: 'rgba(232, 66, 73, 0.45)',
+    image: '/brand/pouch-dogs.png',
+    accentColor: '#1E996C', // baladi-green for dogs
+    glowColor: 'rgba(30, 153, 108, 0.45)',
     link: '/dogs',
     specs: [
       { labelAr: 'البروتين الحيواني', labelEn: 'Animal Protein', value: '20%' },
@@ -349,12 +349,13 @@ export default function Baladi3DHero() {
             <div className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.08] p-1.5 backdrop-blur-md">
               {(
                 [
-                  { key: 'both', labelAr: '🐾 الإثنين معاً', labelEn: '🐾 Both Worlds' },
-                  { key: 'cats', labelAr: '🐱 القطط فقط', labelEn: '🐱 Cats only' },
-                  { key: 'dogs', labelAr: '🐶 الكلاب فقط', labelEn: '🐶 Dogs only' },
+                  { key: 'both', labelAr: 'الإثنين معاً', labelEn: 'Both Worlds', Icon: BaladiDuoEmblem },
+                  { key: 'cats', labelAr: 'القطط فقط', labelEn: 'Cats only', Icon: BaladiCatEmblem },
+                  { key: 'dogs', labelAr: 'الكلاب فقط', labelEn: 'Dogs only', Icon: BaladiDogEmblem },
                 ] as const
               ).map((tab) => {
                 const isActive = mode === tab.key;
+                const Icon = tab.Icon;
                 return (
                   <button
                     key={tab.key}
@@ -371,18 +372,19 @@ export default function Baladi3DHero() {
                         className="absolute inset-0 rounded-full"
                         style={{
                           backgroundColor:
-                            tab.key === 'cats' ? '#1E996C' : tab.key === 'dogs' ? '#E84249' : '#FBBB21',
+                            tab.key === 'cats' ? '#E84249' : tab.key === 'dogs' ? '#1E996C' : '#FBBB21',
                         }}
                         transition={{ type: 'spring', stiffness: 450, damping: 32 }}
                       />
                     )}
                     <span
-                      className="relative z-10"
+                      className="relative z-10 inline-flex items-center gap-1.5"
                       style={{
                         color: isActive ? (tab.key === 'both' ? '#23254F' : '#ffffff') : undefined,
                       }}
                     >
-                      {isRtl ? tab.labelAr : tab.labelEn}
+                      <Icon size={tab.key === 'both' ? 16 : 18} color="currentColor" />
+                      <span>{isRtl ? tab.labelAr : tab.labelEn}</span>
                     </span>
                   </button>
                 );
@@ -452,15 +454,17 @@ export default function Baladi3DHero() {
                 <>
                   <Link
                     to="/cats"
-                    className="btn group relative overflow-hidden bg-baladi-green text-white shadow-xl hover:bg-baladi-green/90 transition-all font-black"
+                    className="btn group relative inline-flex items-center gap-2 overflow-hidden bg-baladi-red text-white shadow-xl hover:bg-baladi-red/90 transition-all font-black"
                   >
+                    <BaladiCatEmblem size={18} color="currentColor" />
                     <span>{t('عالم القطط', 'Cats World')}</span>
                     {isRtl ? <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" /> : <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />}
                   </Link>
                   <Link
                     to="/dogs"
-                    className="btn group relative overflow-hidden bg-baladi-red text-white shadow-xl hover:bg-baladi-red/90 transition-all font-black"
+                    className="btn group relative inline-flex items-center gap-2 overflow-hidden bg-baladi-green text-white shadow-xl hover:bg-baladi-green/90 transition-all font-black"
                   >
+                    <BaladiDogEmblem size={18} color="currentColor" />
                     <span>{t('عالم الكلاب', 'Dogs World')}</span>
                     {isRtl ? <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" /> : <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />}
                   </Link>

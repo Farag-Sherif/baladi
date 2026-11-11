@@ -25,3 +25,6 @@ dist-ssr
 
 # TypeScript
 tsconfig.tsbuildinfo
+
+# Raw local asset dumps
+uploaded_brand_assets/

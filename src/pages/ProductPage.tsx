@@ -1,22 +1,49 @@
-import { Link, useParams } from 'react-router-dom';
-import { ChevronRight, Minus, Plus, ShieldCheck, Star, Truck, Leaf, PawPrint } from 'lucide-react';
-import { useState } from 'react';
+import { Link, useLocation, useParams } from 'react-router-dom';
+import { ChevronRight, Minus, Plus, ShieldCheck, Star, Truck, Leaf, Timer, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { getProduct, related, SPECIES, ALLERGEN_NOTE } from '../data/catalog';
 import { useLang } from '../lib/lang';
 import { egp } from '../lib/utils';
-import { useCart } from '../store/cart';
+import { ADD_GRACE_SECONDS, useCart } from '../store/cart';
 import ProductCard from '../components/sections/ProductCard';
 import Reveal from '../components/ui/Reveal';
 import Tilt3D from '../components/ui/Tilt3D';
-import { Mark, ZigZagBand, DiamondBadge } from '../components/brand/Ornaments';
+import { Mark, ZigZagBand, DiamondBadge, BaladiCatEmblem, BaladiDogEmblem } from '../components/brand/Ornaments';
 import { GhostAnimal } from '../components/brand/Ornaments2';
 
 export default function ProductPage() {
   const { slug = '' } = useParams();
+  const { pathname } = useLocation();
   const product = getProduct(slug);
   const { t, lang } = useLang();
-  const add = useCart((s) => s.add);
+  const pendingAdd = useCart((s) => s.pendingAdd);
+  const startPendingAdd = useCart((s) => s.startPendingAdd);
+  const updatePendingQty = useCart((s) => s.updatePendingQty);
+  const cancelPendingAdd = useCart((s) => s.cancelPendingAdd);
+  const commitPendingAdd = useCart((s) => s.commitPendingAdd);
   const [qty, setQty] = useState(1);
+
+  useEffect(() => {
+    setQty(1);
+  }, [slug]);
+
+  const isPendingThisProduct = Boolean(product && pendingAdd?.product.id === product.id);
+  const activeQty = isPendingThisProduct && pendingAdd ? pendingAdd.qty : qty;
+  const secondsLeft = isPendingThisProduct && pendingAdd ? pendingAdd.secondsLeft : ADD_GRACE_SECONDS;
+  const displayGraceSeconds = Math.max(1, secondsLeft);
+  const graceProgressPercent = Math.min(
+    100,
+    Math.max(0, ((ADD_GRACE_SECONDS - secondsLeft) / ADD_GRACE_SECONDS) * 100)
+  );
+
+  const handleQtyChange = (next: number) => {
+    const clamped = Math.max(1, next);
+    if (isPendingThisProduct) {
+      updatePendingQty(clamped);
+    } else {
+      setQty(clamped);
+    }
+  };
 
   if (!product) {
     return (
@@ -32,8 +59,8 @@ export default function ProductPage() {
 
   const s = SPECIES[product.species];
   const isCat = product.species === 'cats';
-  const accent = isCat ? 'text-baladi-green' : 'text-baladi-red';
-  const accentBg = isCat ? 'bg-baladi-green' : 'bg-baladi-red';
+  const accent = isCat ? 'text-baladi-red' : 'text-baladi-green';
+  const accentBg = isCat ? 'bg-baladi-red' : 'bg-baladi-green';
   const rel = related(product);
 
   return (
@@ -55,22 +82,22 @@ export default function ProductPage() {
         <div className="pointer-events-none absolute inset-0 opacity-[0.10]">
           <img src={product.image} alt="" aria-hidden="true" className="absolute -end-[8%] top-0 h-full w-auto scale-125 object-contain blur-[3px]" />
         </div>
-        <div className={`pointer-events-none absolute inset-0 ${isCat ? 'bg-baladi-green/5' : 'bg-baladi-red/5'}`} />
-        <GhostAnimal src={s.silhouette} className="-bottom-10 -start-16 h-[85%] w-auto" opacity={0.07} />
+        <div className={`pointer-events-none absolute inset-0 ${isCat ? 'bg-baladi-red/5' : 'bg-baladi-green/5'}`} />
+        <GhostAnimal species={product.species} src={s.silhouette} color={isCat ? '#E84249' : '#1E996C'} className="-bottom-10 -start-16 h-[85%] w-auto" opacity={0.11} />
 
         <div className="u-container relative grid gap-12 py-10 md:py-16 lg:grid-cols-2">
           {/* stage */}
           <div className="relative">
-            <div className={`relative overflow-hidden rounded-[34px] ${isCat ? 'bg-gradient-to-br from-[#E3F2EA] to-cream' : 'bg-gradient-to-br from-[#FCE3E4] to-cream'} p-8`}>
-              <div className="absolute inset-x-0 top-0"><ZigZagBand height={13} weight={1.6} color={isCat ? '#1E996C' : '#E84249'} className="opacity-40" /></div>
+            <div className={`relative overflow-hidden rounded-[34px] ${isCat ? 'bg-gradient-to-br from-[#FCE3E4] to-cream' : 'bg-gradient-to-br from-[#E3F2EA] to-cream'} p-8`}>
+              <div className="absolute inset-x-0 top-0"><ZigZagBand height={13} weight={1.6} color={isCat ? '#E84249' : '#1E996C'} className="opacity-40" /></div>
               <Tilt3D strength={13}>
-                <div className="relative grid min-h-[330px] place-items-center md:min-h-[440px]">
-                  <img src={product.image} alt={product.name[lang]} className="max-h-[420px] w-auto object-contain drop-shadow-[0_40px_60px_rgba(35,37,79,0.32)]" />
+                <div className="relative flex h-[340px] w-full items-center justify-center p-2 md:h-[460px]">
+                  <img src={product.image} alt={product.name[lang]} className="h-full w-full max-h-full max-w-full object-contain drop-shadow-[0_40px_60px_rgba(35,37,79,0.32)]" />
                 </div>
               </Tilt3D>
               <div className="mt-4 flex items-center justify-between">
                 <span className={`t-eyebrow ${accent}`}>{product.flavor[lang]} · {product.weight}</span>
-                <DiamondBadge size={28} accent={isCat ? '#1E996C' : '#E84249'} dot="#FBBB21" />
+                <DiamondBadge size={28} accent={isCat ? '#E84249' : '#1E996C'} dot="#FBBB21" />
               </div>
             </div>
 
@@ -108,24 +135,89 @@ export default function ProductPage() {
 
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-3 rounded-full border hairline bg-white px-3 py-2">
-                <button onClick={() => setQty(Math.max(1, qty - 1))} aria-label="minus"><Minus className="h-4 w-4" /></button>
-                <span className="w-6 text-center text-sm font-black text-ink">{qty}</span>
-                <button onClick={() => setQty(qty + 1)} aria-label="plus"><Plus className="h-4 w-4" /></button>
+                <button type="button" onClick={() => handleQtyChange(activeQty - 1)} aria-label="minus"><Minus className="h-4 w-4" /></button>
+                <span className="w-6 text-center text-sm font-black text-ink">{activeQty}</span>
+                <button type="button" onClick={() => handleQtyChange(activeQty + 1)} aria-label="plus"><Plus className="h-4 w-4" /></button>
               </div>
-              <button onClick={() => add(product, qty)} className={`btn flex-1 ${isCat ? 'btn-accent theme-cat' : 'btn-accent theme-dog'}`}>
-                {t('أضف للسلة', 'Add to cart')} · {egp(product.price * qty, lang)}
-              </button>
+              {!isPendingThisProduct ? (
+                <button
+                  type="button"
+                  onClick={() => startPendingAdd(product, activeQty, pathname)}
+                  className={`btn flex-1 ${isCat ? 'btn-accent theme-cat' : 'btn-accent theme-dog'}`}
+                >
+                  {t('أضف للسلة', 'Add to cart')} · {egp(product.price * activeQty, lang)}
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => commitPendingAdd(true)}
+                    className={`btn relative flex-1 overflow-hidden ${isCat ? 'btn-accent theme-cat' : 'btn-accent theme-dog'}`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-y-0 start-0 bg-ink/25 transition-all duration-1000 ease-linear"
+                      style={{ width: `${graceProgressPercent}%` }}
+                    />
+                    <span className="relative z-10 inline-flex items-center justify-center gap-2 tabular-nums">
+                      <Timer className="h-4 w-4 animate-spin shrink-0" style={{ animationDuration: '3s' }} />
+                      <span>
+                        {t(
+                          `جاري التأكيد · ${displayGraceSeconds} ث · ${egp(product.price * activeQty, lang)}`,
+                          `Confirming · ${displayGraceSeconds}s · ${egp(product.price * activeQty, lang)}`
+                        )}
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelPendingAdd}
+                    className="inline-flex items-center gap-1.5 rounded-full border-2 border-ink/20 bg-white px-4 py-3 text-xs font-black text-ink hover:border-baladi-red hover:text-baladi-red transition-colors"
+                  >
+                    <X className="h-4 w-4 shrink-0" />
+                    <span>{t('إلغاء', 'Cancel')}</span>
+                  </button>
+                </>
+              )}
             </div>
+            {isPendingThisProduct && (
+              <p className="mt-2.5 text-xs font-bold text-ink/75">
+                {t(
+                  `مهلة ١٠ ثوانٍ — يمكنك تعديل الكمية (${activeQty}) أو الإلغاء، وإذا انتقلت لصفحة أخرى سيُضاف المنتج للسلة فوراً`,
+                  `10s grace window — adjust qty (${activeQty}) or cancel; leaving this page adds it immediately`
+                )}
+              </p>
+            )}
 
             <div className="mt-5 grid grid-cols-2 gap-3">
               {[
-                { i: Truck, a: 'توصيل لكل المحافظات', b: 'Nationwide delivery' },
-                { i: ShieldCheck, a: 'مواصفة ٣٢١٥/٢٠٠٢', b: 'ES 3215/2002 compliant' },
-                { i: Leaf, a: 'بدون مكسبات طعم', b: 'No artificial flavours' },
-                { i: PawPrint, a: 'مناسب للبلدى', b: 'Made for Baladi' },
+                {
+                  icon: <Truck className={`h-4 w-4 shrink-0 ${accent}`} strokeWidth={1.9} />,
+                  a: 'توصيل لكل المحافظات',
+                  b: 'Nationwide delivery',
+                },
+                {
+                  icon: <ShieldCheck className={`h-4 w-4 shrink-0 ${accent}`} strokeWidth={1.9} />,
+                  a: 'مواصفة ٣٢١٥/٢٠٠٢',
+                  b: 'ES 3215/2002 compliant',
+                },
+                {
+                  icon: <Leaf className={`h-4 w-4 shrink-0 ${accent}`} strokeWidth={1.9} />,
+                  a: 'بدون مكسبات طعم',
+                  b: 'No artificial flavours',
+                },
+                {
+                  icon: isCat ? (
+                    <BaladiCatEmblem size={17} color="#E84249" />
+                  ) : (
+                    <BaladiDogEmblem size={17} color="#1E996C" />
+                  ),
+                  a: 'مناسب للبلدى',
+                  b: 'Made for Baladi',
+                },
               ].map((b, i) => (
                 <div key={i} className="flex items-center gap-2 rounded-xl bg-white/90 p-2.5 text-[11.5px] font-black text-ink">
-                  <b.i className={`h-4 w-4 shrink-0 ${accent}`} strokeWidth={1.9} /> {t(b.a, b.b)}
+                  {b.icon} {t(b.a, b.b)}
                 </div>
               ))}
             </div>
@@ -154,7 +246,7 @@ export default function ProductPage() {
             <p className="t-eyebrow mt-8 text-ink/70">{t('الفيتامينات والمعادن المضافة', 'ADDED VITAMINS & MINERALS')}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {product.vitamins.map((v) => (
-                <span key={v} className={`rounded-full px-3 py-1.5 text-[11.5px] font-bold ${isCat ? 'bg-baladi-green/10 text-baladi-green' : 'bg-baladi-red/10 text-baladi-red'}`}>
+                <span key={v} className={`rounded-full px-3 py-1.5 text-[11.5px] font-bold ${isCat ? 'bg-baladi-red/10 text-baladi-red' : 'bg-baladi-green/10 text-baladi-green'}`}>
                   {v}
                 </span>
               ))}
@@ -170,7 +262,7 @@ export default function ProductPage() {
                 <span className="text-[11px] font-bold text-cream/80">{t('مُصنَّع فى مصر', 'Made in Egypt')}</span>
               </div>
             </div>
-            <div className={`rounded-[26px] p-6 ${isCat ? 'bg-baladi-green/10' : 'bg-baladi-red/10'}`}>
+            <div className={`rounded-[26px] p-6 ${isCat ? 'bg-baladi-red/10' : 'bg-baladi-green/10'}`}>
               <p className={`t-eyebrow ${accent}`}>{s.latin}</p>
               <p className="mt-2 text-[13px] font-medium leading-relaxed text-ink/85">{s.intro[lang]}</p>
               <Link to={`/${product.species}`} className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-black uppercase tracking-[0.14em] text-ink/80 hover:text-ink">

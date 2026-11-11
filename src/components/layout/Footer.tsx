@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Instagram, Facebook, Mail, MapPin } from 'lucide-react';
 import { useLang } from '../../lib/lang';
-import { Mark, ZigZagBand, DiamondBadge } from '../brand/Ornaments';
+import { Mark, ZigZagBand, DiamondBadge, GpfBadge } from '../brand/Ornaments';
 
 export default function Footer() {
   const { t } = useLang();
@@ -12,8 +12,11 @@ export default function Footer() {
       <ZigZagBand color="#FBBB21" height={26} className="opacity-90" />
       <div className="u-container grid gap-10 py-16 md:grid-cols-[1.3fr_0.9fr_0.9fr_0.9fr_1fr]">
         <div>
-          <Mark tone="red" white className="h-11" />
-          <p className="mt-5 max-w-xs text-sm leading-relaxed text-cream/95 font-medium">
+          <div className="flex flex-col items-start gap-3">
+            <Mark tone="red" white className="h-11" />
+            <GpfBadge />
+          </div>
+          <p className="mt-4 max-w-xs text-sm leading-relaxed text-cream/95 font-medium">
             {t(
               'طعام جاف كامل للقطط والكلاب، معمول فى مصر عشان البلدى وكل الحيوانات ما تنامش جيعانة.',
               'Complete dry food for cats and dogs, made in Egypt so Baladi animals — and every animal — never sleep hungry.'
