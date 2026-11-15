@@ -1,4 +1,3 @@
-import { useId } from 'react';
 import { cn } from '../../lib/utils';
 import { useLang } from '../../lib/lang';
 
@@ -23,13 +22,11 @@ export function BaladiGridBackground({
   );
 }
 
-/** The pack's zig-zag ribbon with the dot in every valley, matching brand guideline (بلدي-06.png). */
+/** Authentic Baladi double zig-zag ribbon from packaging (transparent PNG). */
 export function ZigZagBand({
   color = '#FBBB21',
   height = 20,
   className,
-  dots = true,
-  weight = 2.2,
 }: {
   color?: string;
   height?: number;
@@ -37,25 +34,34 @@ export function ZigZagBand({
   dots?: boolean;
   weight?: number;
 }) {
-  const id = useId().replace(/:/g, '');
+  const isDefaultYellow = !color || color.toLowerCase() === '#fbbb21' || color.toLowerCase() === '#fcbc22';
   return (
-    <svg
-      className={cn('block w-full', className)}
-      height={height}
-      viewBox="0 0 240 24"
-      preserveAspectRatio="none"
+    <div
+      role="presentation"
       aria-hidden="true"
-      focusable="false"
-    >
-      <defs>
-        <pattern id={`zz-${id}`} width="24" height="24" patternUnits="userSpaceOnUse">
-          <path d="M0 7 L6 1 L12 7 L18 1 L24 7" stroke={color} strokeWidth={weight} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M0 19 L6 13 L12 19 L18 13 L24 19" stroke={color} strokeWidth={weight} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          {dots && <circle cx="12" cy="10" r="1.7" fill={color} />}
-        </pattern>
-      </defs>
-      <rect width="240" height="24" fill={`url(#zz-${id})`} />
-    </svg>
+      className={cn('block w-full select-none pointer-events-none', className)}
+      style={{
+        height: `${height}px`,
+        ...(isDefaultYellow
+          ? {
+              backgroundImage: 'url(/brand/zigzag-ribbon.png)',
+              backgroundRepeat: 'repeat-x',
+              backgroundSize: `auto ${height}px`,
+              backgroundPosition: 'center',
+            }
+          : {
+              backgroundColor: color,
+              WebkitMaskImage: 'url(/brand/zigzag-ribbon.png)',
+              maskImage: 'url(/brand/zigzag-ribbon.png)',
+              WebkitMaskRepeat: 'repeat-x',
+              maskRepeat: 'repeat-x',
+              WebkitMaskSize: `auto ${height}px`,
+              maskSize: `auto ${height}px`,
+              WebkitMaskPosition: 'center',
+              maskPosition: 'center',
+            }),
+      }}
+    />
   );
 }
 

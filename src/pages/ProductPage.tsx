@@ -182,7 +182,7 @@ export default function ProductPage() {
           {/* stage */}
           <div className="relative">
             <div className={`relative overflow-hidden rounded-[34px] ${isCat ? 'bg-gradient-to-br from-[#FCE3E4] to-cream' : 'bg-gradient-to-br from-[#E3F2EA] to-cream'} p-8`}>
-              <div className="absolute inset-x-0 top-0"><ZigZagBand height={13} weight={1.6} color={isCat ? '#E84249' : '#1E996C'} className="opacity-40" /></div>
+              <div className="absolute inset-x-0 top-0"><ZigZagBand height={16} color={isCat ? '#E84249' : '#1E996C'} className="opacity-40" /></div>
               {product.discount_percent ? (
                 <span className="pill-solid absolute start-6 top-6 z-10 bg-baladi-yellow text-ink">
                   -{product.discount_percent}%

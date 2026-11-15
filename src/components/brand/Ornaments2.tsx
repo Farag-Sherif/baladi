@@ -1,20 +1,9 @@
-import { useId } from 'react';
 import { cn } from '../../lib/utils';
+import { ZigZagBand } from './Ornaments';
 
-/** Vertical lightning strip — the guideline's side border device. */
+/** Vertical lightning / zigzag strip — now using the authentic packaging zigzag ribbon. */
 export function Thunder({ color = '#FBBB21', height = 24, className }: { color?: string; height?: number; className?: string }) {
-  const id = useId().replace(/:/g, '');
-  return (
-    <svg className={cn('block w-full', className)} height={height} viewBox="0 0 240 24" preserveAspectRatio="none" aria-hidden="true">
-      <defs>
-        <pattern id={`th-${id}`} width="30" height="24" patternUnits="userSpaceOnUse">
-          <path d="M0 2 L10 12 L2 12 L12 22" stroke={color} strokeWidth="2" fill="none" strokeLinejoin="round" />
-          <path d="M18 2 L28 12 L20 12 L30 22" stroke={color} strokeWidth="2" fill="none" strokeLinejoin="round" />
-        </pattern>
-      </defs>
-      <rect width="240" height="24" fill={`url(#th-${id})`} />
-    </svg>
-  );
+  return <ZigZagBand color={color} height={height} className={className} />;
 }
 
 /** Authentic low-opacity Baladi Cat / Dog emblem watermark from brand guideline. */

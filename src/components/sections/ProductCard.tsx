@@ -153,7 +153,7 @@ export default function ProductCard({ product }: { product: ApiProduct }) {
             </span>
           </div>
         </div>
-        <ZigZagBand height={11} weight={1.3} color={isCat ? '#1E996C' : '#E84249'} className="opacity-45" />
+        <ZigZagBand height={13} color={isCat ? '#1E996C' : '#E84249'} className="opacity-45" />
       </div>
     </Tilt3D>
   );

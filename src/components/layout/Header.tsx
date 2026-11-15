@@ -179,7 +179,7 @@ export default function Header() {
           </div>
         </div>
       </div>
-      {!transparent && <ZigZagBand height={9} weight={1.5} color="#E84249" />}
+      {!transparent && <ZigZagBand height={12} color="#E84249" />}
 
       <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
 
