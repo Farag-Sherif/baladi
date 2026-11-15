@@ -7,6 +7,7 @@ import { useCart } from '../../store/cart';
 import { useStorefront } from '../../store/storefront';
 import { useAuth } from '../../store/auth';
 import { useLang } from '../../lib/lang';
+import { prefetch3DAssets } from '../../lib/3dPreloader';
 
 export default function Layout() {
   const { pathname } = useLocation();
@@ -26,6 +27,7 @@ export default function Layout() {
     void initStorefront(lang, true);
     void initAuth(lang);
     void fetchCart(lang);
+    prefetch3DAssets();
   }, [lang, initStorefront, initAuth, fetchCart]);
 
   // If a customer navigates away during the add-to-cart grace timer, commit it immediately to the cart.

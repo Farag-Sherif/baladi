@@ -327,8 +327,8 @@ export default function ProfilePage() {
         <div className="u-container relative">
           <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-start">
-              <div className="grid h-20 w-20 place-items-center rounded-3xl border-2 border-baladi-yellow bg-ink/80 text-white shadow-lift">
-                <BaladiDuoEmblem size={42} color="#FFFFFF" />
+              <div className="grid h-20 w-20 place-items-center rounded-3xl border-2 border-baladi-yellow bg-baladi-yellow text-ink shadow-lift overflow-hidden shrink-0">
+                <BaladiDuoEmblem size={28} color="#23254F" />
               </div>
               <div>
                 <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">

@@ -128,24 +128,26 @@ export default function Header() {
             <Link
               to={isAuthenticated ? '/profile' : '/login'}
               className={cn(
-                'flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-black transition-colors',
-                transparent ? 'text-white hover:bg-white/15' : 'text-ink hover:bg-ink/5'
+                'flex items-center gap-2 rounded-full py-1 ps-2 pe-3 text-xs font-black transition-all shadow-xs',
+                transparent
+                  ? 'border border-white/20 bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm'
+                  : 'border border-ink/20 bg-white text-ink hover:border-ink/40 hover:bg-cream'
               )}
               title={isAuthenticated ? t('الملف الشخصي وحسابي', 'My Profile & Account') : t('تسجيل الدخول', 'Sign In')}
               aria-label={isAuthenticated ? t('الملف الشخصي وحسابي', 'My Profile & Account') : t('تسجيل الدخول', 'Sign In')}
             >
               {isAuthenticated && user ? (
-                <div className="flex items-center gap-1.5">
-                  <span className="grid h-6 w-6 place-items-center rounded-full bg-baladi-yellow text-ink shadow-sm">
-                    <BaladiDuoEmblem size={14} color="#23254F" />
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center justify-center rounded-full bg-baladi-yellow px-2 py-0.5 text-ink shadow-xs shrink-0">
+                    <BaladiDuoEmblem size={12} color="#23254F" />
                   </span>
                   <span className="hidden font-black md:inline-block max-w-[85px] truncate">
                     {user.name.split(' ')[0]}
                   </span>
                 </div>
               ) : (
-                <div className="flex items-center gap-1.5">
-                  <UserIcon className="h-[19px] w-[19px]" />
+                <div className="flex items-center gap-1.5 px-1">
+                  <UserIcon className="h-[18px] w-[18px]" />
                   <span className="hidden font-black sm:inline-block">
                     {t('تسجيل الدخول', 'Sign In')}
                   </span>
@@ -208,8 +210,8 @@ export default function Header() {
               {isAuthenticated && user ? (
                 <div>
                   <div className="flex items-center gap-3">
-                    <span className="grid h-10 w-10 place-items-center rounded-2xl bg-baladi-yellow text-ink">
-                      <BaladiDuoEmblem size={20} color="#23254F" />
+                    <span className="flex items-center justify-center rounded-2xl bg-baladi-yellow px-3 py-2 text-ink shadow-sm shrink-0">
+                      <BaladiDuoEmblem size={18} color="#23254F" />
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-black text-ink">{user.name}</p>

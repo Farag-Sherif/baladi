@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Rotate3d, Loader2 } from 'lucide-react';
 import { useLang } from '../../lib/lang';
+import { getIs3DPreloaded, setIs3DPreloaded } from '../../lib/3dPreloader';
 
 type WorldMode = 'both' | 'cats' | 'dogs';
 type PouchSpecies = 'cat' | 'dog';
@@ -109,18 +110,23 @@ interface BaladiPouch3DViewerProps {
   mode: WorldMode;
   isPaused?: boolean;
   className?: string;
+  onProgress?: (loaded: number, total: number, percent: number) => void;
+  onReady?: () => void;
 }
 
 export default function BaladiPouch3DViewer({
   mode,
   className = '',
+  onProgress,
+  onReady,
 }: BaladiPouch3DViewerProps) {
   const { lang } = useLang();
   const isRtl = lang === 'ar';
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const [isLoading, setIsLoading] = useState(true);
+  const isAlreadyLoaded = getIs3DPreloaded();
+  const [isLoading, setIsLoading] = useState(!isAlreadyLoaded);
   const [userRotated, setUserRotated] = useState(false);
 
   // Keep current mode in ref for 60fps render loop
@@ -217,7 +223,44 @@ export default function BaladiPouch3DViewer({
     rootGroupRef.current = rootGroup;
 
     // 5. Load Both Models in Parallel & Apply Bilingual Front/Back Brand Artwork
-    const texLoader = new THREE.TextureLoader();
+    const TOTAL_ASSETS = 10;
+    let itemsLoaded = 0;
+    let isFinished = false;
+
+    const loadingManager = new THREE.LoadingManager();
+
+    const finishLoading = () => {
+      if (disposed || isFinished) return;
+      isFinished = true;
+      try {
+        renderer.compile(scene, camera);
+        renderer.render(scene, camera);
+      } catch {
+        // Safe to ignore if compile encounters non-fatal condition
+      }
+      setIsLoading(false);
+      setIs3DPreloaded(true);
+      onProgress?.(TOTAL_ASSETS, TOTAL_ASSETS, 100);
+      onReady?.();
+    };
+
+    loadingManager.onProgress = (_url, loaded, total) => {
+      if (disposed || isFinished) return;
+      itemsLoaded = loaded;
+      const actualTotal = Math.max(total, TOTAL_ASSETS);
+      const percent = Math.min(100, Math.round((loaded / actualTotal) * 100));
+      onProgress?.(loaded, actualTotal, percent);
+    };
+
+    loadingManager.onLoad = () => {
+      finishLoading();
+    };
+
+    loadingManager.onError = (url) => {
+      console.warn('3D Asset load error:', url);
+    };
+
+    const texLoader = new THREE.TextureLoader(loadingManager);
     const maxAnisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy() || 1);
 
     const textureBank: PouchTextureBank = {
@@ -244,13 +287,13 @@ export default function BaladiPouch3DViewer({
     };
     textureBankRef.current = textureBank;
 
-    const loader = new GLTFLoader();
-    let loaded = 0;
-    const checkAllLoaded = () => {
+    const loader = new GLTFLoader(loadingManager);
+    let modelsLoaded = 0;
+    const checkModelsLoaded = () => {
       if (disposed) return;
-      loaded++;
-      if (loaded >= 2) {
-        setIsLoading(false);
+      modelsLoaded++;
+      if (modelsLoaded >= 2 && itemsLoaded >= 8) {
+        finishLoading();
       }
     };
 
@@ -281,12 +324,12 @@ export default function BaladiPouch3DViewer({
         cat.scale.set(0.9, 0.9, 0.9);
         rootGroup.add(cat);
         catPouchRef.current = cat;
-        checkAllLoaded();
+        checkModelsLoaded();
       },
       undefined,
       (err) => {
         console.error('Cat GLB load error:', err);
-        checkAllLoaded();
+        checkModelsLoaded();
       }
     );
 
@@ -309,14 +352,29 @@ export default function BaladiPouch3DViewer({
         dog.visible = false;
         rootGroup.add(dog);
         dogPouchRef.current = dog;
-        checkAllLoaded();
+        checkModelsLoaded();
       },
       undefined,
       (err) => {
         console.error('Dog GLB load error:', err);
-        checkAllLoaded();
+        checkModelsLoaded();
       }
     );
+
+    // Fallback safety timeout so viewer never stays in loading state
+    const fallbackTimer = setTimeout(() => {
+      if (!isFinished && !disposed) {
+        finishLoading();
+      }
+    }, 10000);
+
+    if (isAlreadyLoaded) {
+      setTimeout(() => {
+        if (!disposed) {
+          finishLoading();
+        }
+      }, 0);
+    }
 
     // 6. Smooth Physics Render Loop
     let rafId = 0;
@@ -421,6 +479,7 @@ export default function BaladiPouch3DViewer({
 
     return () => {
       disposed = true;
+      clearTimeout(fallbackTimer);
       cancelAnimationFrame(rafId);
       resizeObserver.disconnect();
       if (catPouchRef.current) disposeGroup(catPouchRef.current);

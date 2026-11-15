@@ -206,18 +206,18 @@ export default function ProductPage() {
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-3 gap-3">
-              <div className="rounded-2xl border hairline bg-white p-3">
-                <p className="text-[10px] font-black uppercase tracking-wider text-ink/55">{t('رمز المنتج', 'SKU')}</p>
-                <p className="mt-0.5 text-[12px] font-extrabold text-ink">{product.sku}</p>
+            <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3">
+              <div className="rounded-2xl border hairline bg-white p-2.5 sm:p-3 text-center sm:text-start shadow-xs">
+                <p className="text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider text-ink/55">{t('رمز المنتج', 'SKU')}</p>
+                <p className="mt-0.5 truncate text-[11.5px] sm:text-[12px] font-extrabold text-ink">{product.sku}</p>
               </div>
-              <div className="rounded-2xl border hairline bg-white p-3">
-                <p className="text-[10px] font-black uppercase tracking-wider text-ink/55">{t('التصنيف', 'Category')}</p>
-                <p className="mt-0.5 truncate text-[12px] font-extrabold text-ink">{categoryTitle}</p>
+              <div className="rounded-2xl border hairline bg-white p-2.5 sm:p-3 text-center sm:text-start shadow-xs">
+                <p className="text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider text-ink/55">{t('التصنيف', 'Category')}</p>
+                <p className="mt-0.5 truncate text-[11.5px] sm:text-[12px] font-extrabold text-ink">{categoryTitle}</p>
               </div>
-              <div className="rounded-2xl border hairline bg-white p-3">
-                <p className="text-[10px] font-black uppercase tracking-wider text-ink/55">{t('المخزون', 'Stock')}</p>
-                <p className={`mt-0.5 text-[12px] font-extrabold ${product.in_stock ? 'text-baladi-green' : 'text-baladi-red'}`}>
+              <div className="rounded-2xl border hairline bg-white p-2.5 sm:p-3 text-center sm:text-start shadow-xs">
+                <p className="text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider text-ink/55">{t('المخزون', 'Stock')}</p>
+                <p className={`mt-0.5 truncate text-[11.5px] sm:text-[12px] font-extrabold ${product.in_stock ? 'text-baladi-green' : 'text-baladi-red'}`}>
                   {product.in_stock ? `${product.stock_quantity} ${t('متاح', 'available')}` : t('نفد', 'Out of stock')}
                 </p>
               </div>
@@ -272,87 +272,139 @@ export default function ProductPage() {
               </div>
             )}
 
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-3 rounded-full border hairline bg-white px-3 py-2">
-                <button
-                  type="button"
-                  onClick={() => handleQtyChange(activeQty - 1)}
-                  disabled={activeQty <= 1}
-                  aria-label={t('إنقاص الكمية', 'Decrease quantity')}
-                  className="disabled:opacity-35"
-                >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <span className="w-6 text-center text-sm font-black text-ink">{activeQty}</span>
-                <button
-                  type="button"
-                  onClick={() => handleQtyChange(activeQty + 1)}
-                  disabled={!product.in_stock || activeQty >= product.stock_quantity}
-                  aria-label={t('زيادة الكمية', 'Increase quantity')}
-                  className="disabled:opacity-35"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-              {!product.in_stock ? (
-                <button
-                  type="button"
-                  disabled
-                  className="btn flex-1 cursor-not-allowed bg-ink/15 text-ink/50"
-                >
-                  {t('نفد من المخزون', 'Out of stock')}
-                </button>
-              ) : !isPendingThisProduct ? (
-                <button
-                  type="button"
-                  onClick={() => startPendingAdd(product, activeQty, pathname)}
-                  className={`btn flex-1 ${isCat ? 'btn-accent theme-cat' : 'btn-accent theme-dog'}`}
-                >
-                  {t('أضف للسلة', 'Add to cart')} · {egp(product.price * activeQty, lang)}
-                </button>
-              ) : (
-                <>
+            {/* ── ACTION ROW: QUANTITY & ADD TO CART / GRACE CONFIRMATION ── */}
+            {!isPendingThisProduct ? (
+              <div className="mt-6 flex items-center gap-2.5 sm:gap-3">
+                <div className="flex shrink-0 items-center gap-2.5 sm:gap-3 rounded-full border hairline bg-white px-3 py-2.5 shadow-sm">
                   <button
                     type="button"
-                    onClick={() => void commitPendingAdd(true)}
-                    className={`btn relative flex-1 overflow-hidden ${isCat ? 'btn-accent theme-cat' : 'btn-accent theme-dog'}`}
+                    onClick={() => handleQtyChange(activeQty - 1)}
+                    disabled={activeQty <= 1}
+                    aria-label={t('إنقاص الكمية', 'Decrease quantity')}
+                    className="p-0.5 transition-opacity disabled:opacity-30"
                   >
-                    <span
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-y-0 start-0 bg-ink/25 transition-all duration-1000 ease-linear"
-                      style={{ width: `${graceProgressPercent}%` }}
-                    />
-                    <span className="relative z-10 inline-flex items-center justify-center gap-2 tabular-nums">
-                      <Timer className="h-4 w-4 shrink-0 animate-spin" style={{ animationDuration: '3s' }} />
-                      <span>
-                        {t(
-                          `جاري التأكيد · ${displayGraceSeconds} ث · ${egp(product.price * activeQty, lang)}`,
-                          `Confirming · ${displayGraceSeconds}s · ${egp(product.price * activeQty, lang)}`
-                        )}
-                      </span>
-                    </span>
+                    <Minus className="h-4 w-4" />
                   </button>
+                  <span className="w-6 text-center text-sm font-black text-ink tabular-nums">{activeQty}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleQtyChange(activeQty + 1)}
+                    disabled={!product.in_stock || activeQty >= product.stock_quantity}
+                    aria-label={t('زيادة الكمية', 'Increase quantity')}
+                    className="p-0.5 transition-opacity disabled:opacity-30"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {!product.in_stock ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="btn flex-1 cursor-not-allowed bg-ink/15 text-ink/50 py-3.5 text-xs sm:text-sm font-black"
+                  >
+                    {t('نفد من المخزون', 'Out of stock')}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => startPendingAdd(product, activeQty, pathname)}
+                    className={`btn flex-1 whitespace-nowrap py-3.5 text-xs sm:text-sm font-black shadow-md ${
+                      isCat ? 'btn-accent theme-cat' : 'btn-accent theme-dog'
+                    }`}
+                  >
+                    <span>{t('أضف للسلة', 'Add to cart')}</span>
+                    <span className="opacity-70">·</span>
+                    <span>{egp(product.price * activeQty, lang)}</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="mt-6 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3">
+                {/* Mobile Top Row: Quantity + Cancel Button */}
+                <div className="flex items-center justify-between gap-2.5 sm:contents">
+                  <div className="flex shrink-0 items-center gap-2.5 sm:gap-3 rounded-full border hairline bg-white px-3 py-2.5 shadow-sm">
+                    <button
+                      type="button"
+                      onClick={() => handleQtyChange(activeQty - 1)}
+                      disabled={activeQty <= 1}
+                      aria-label={t('إنقاص الكمية', 'Decrease quantity')}
+                      className="p-0.5 transition-opacity disabled:opacity-30"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="w-6 text-center text-sm font-black text-ink tabular-nums">{activeQty}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleQtyChange(activeQty + 1)}
+                      disabled={!product.in_stock || activeQty >= product.stock_quantity}
+                      aria-label={t('زيادة الكمية', 'Increase quantity')}
+                      className="p-0.5 transition-opacity disabled:opacity-30"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {/* Cancel Button on Mobile */}
                   <button
                     type="button"
                     onClick={cancelPendingAdd}
-                    className="inline-flex items-center gap-1.5 rounded-full border-2 border-ink/20 bg-white px-4 py-3 text-xs font-black text-ink transition-colors hover:border-baladi-red hover:text-baladi-red"
+                    className="inline-flex flex-1 sm:hidden items-center justify-center gap-1.5 rounded-full border-2 border-ink/20 bg-white px-4 py-2.5 text-xs font-black text-ink shadow-sm transition-colors hover:border-baladi-red hover:text-baladi-red active:scale-95"
                   >
                     <X className="h-4 w-4 shrink-0" />
                     <span>{t('إلغاء', 'Cancel')}</span>
                   </button>
-                </>
-              )}
-            </div>
-            {isPendingThisProduct && (
-              <p className="mt-2.5 text-xs font-bold text-ink/75">
-                {t(
-                  `مهلة ١٠ ثوانٍ — يمكنك تعديل الكمية (${activeQty}) أو الإلغاء، وإذا انتقلت لصفحة أخرى سيُضاف المنتج للسلة فوراً`,
-                  `10s grace window — adjust qty (${activeQty}) or cancel; leaving this page adds it immediately`
-                )}
-              </p>
+                </div>
+
+                {/* Confirming Button (Full width on mobile, flex-1 on desktop) */}
+                <button
+                  type="button"
+                  onClick={() => void commitPendingAdd(true)}
+                  className={`btn relative w-full sm:flex-1 overflow-hidden shadow-lg py-3.5 whitespace-nowrap ${
+                    isCat ? 'btn-accent theme-cat' : 'btn-accent theme-dog'
+                  }`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-y-0 start-0 bg-ink/25 transition-all duration-1000 ease-linear"
+                    style={{ width: `${graceProgressPercent}%` }}
+                  />
+                  <span className="relative z-10 inline-flex items-center justify-center gap-2 text-xs sm:text-sm font-black tabular-nums">
+                    <Timer className="h-4 w-4 shrink-0 animate-spin" style={{ animationDuration: '3s' }} />
+                    <span>
+                      {t(
+                        `جاري التأكيد · ${displayGraceSeconds} ث · ${egp(product.price * activeQty, lang)}`,
+                        `Confirming · ${displayGraceSeconds}s · ${egp(product.price * activeQty, lang)}`
+                      )}
+                    </span>
+                  </span>
+                </button>
+
+                {/* Cancel Button on Desktop */}
+                <button
+                  type="button"
+                  onClick={cancelPendingAdd}
+                  className="hidden sm:inline-flex shrink-0 items-center gap-1.5 rounded-full border-2 border-ink/20 bg-white px-4 py-3 text-xs font-black text-ink shadow-sm transition-colors hover:border-baladi-red hover:text-baladi-red active:scale-95"
+                >
+                  <X className="h-4 w-4 shrink-0" />
+                  <span>{t('إلغاء', 'Cancel')}</span>
+                </button>
+              </div>
             )}
 
-            <div className="mt-5 grid grid-cols-2 gap-3">
+            {isPendingThisProduct && (
+              <div className="mt-3 flex items-start gap-2 rounded-2xl border hairline bg-cream/70 p-3 text-[11.5px] sm:text-xs font-bold leading-relaxed text-ink/80 shadow-xs">
+                <Timer className="mt-0.5 h-3.5 w-3.5 shrink-0 text-baladi-yellow" />
+                <span>
+                  {t(
+                    `مهلة ١٠ ثوانٍ — يمكنك تعديل الكمية (${activeQty}) أو الإلغاء، وإذا انتقلت لصفحة أخرى سيُضاف المنتج للسلة فوراً`,
+                    `10s grace window — adjust qty (${activeQty}) or cancel; leaving this page adds it immediately`
+                  )}
+                </span>
+              </div>
+            )}
+
+            <div className="mt-5 grid grid-cols-2 gap-2.5 sm:gap-3">
               {[
                 {
                   icon: <Truck className={`h-4 w-4 shrink-0 ${accent}`} strokeWidth={1.9} />,
@@ -383,8 +435,8 @@ export default function ProductPage() {
                   b: 'Made for Baladi',
                 },
               ].map((b, i) => (
-                <div key={i} className="flex items-center gap-2 rounded-xl bg-white/90 p-2.5 text-[11.5px] font-black text-ink">
-                  {b.icon} {t(b.a, b.b)}
+                <div key={i} className="flex items-center gap-2 rounded-xl bg-white/90 p-2.5 text-[11px] sm:text-[11.5px] font-black text-ink shadow-xs">
+                  {b.icon} <span className="truncate">{t(b.a, b.b)}</span>
                 </div>
               ))}
             </div>

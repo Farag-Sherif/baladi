@@ -255,6 +255,7 @@ export function BaladiDuoEmblem({
   color = 'currentColor',
   catColor,
   dogColor,
+  gap,
   className,
 }: {
   size?: number;
@@ -262,10 +263,12 @@ export function BaladiDuoEmblem({
   catColor?: string;
   dogColor?: string;
   strokeWidth?: number;
+  gap?: string;
   className?: string;
 }) {
+  const gapClass = gap ?? (size <= 16 ? 'gap-1' : 'gap-1.5');
   return (
-    <span className={cn('inline-flex items-center gap-1.5 select-none shrink-0', className)}>
+    <span className={cn('inline-flex items-center select-none shrink-0', gapClass, className)}>
       <BaladiCatEmblem size={size} color={catColor ?? color} />
       <BaladiDogEmblem size={size} color={dogColor ?? color} />
     </span>
