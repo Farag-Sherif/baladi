@@ -5,13 +5,29 @@ import ProductCard from '../components/sections/ProductCard';
 import Reveal from '../components/ui/Reveal';
 import Tilt3D from '../components/ui/Tilt3D';
 import { useLang } from '../lib/lang';
-import { SPECIES, PRODUCTS, bySpecies } from '../data/catalog';
-import { Mark, ZigZagBand, DiamondBadge, LeafStem, BaladiDogEmblem, BaladiCatEmblem } from '../components/brand/Ornaments';
+import { SPECIES } from '../data/catalog';
+import { useStorefront } from '../store/storefront';
+import {
+  getCategoryTitle,
+  getProductFallbackImage,
+  getProductTitle,
+  resolveProductImage,
+} from '../lib/api';
+import { egp } from '../lib/utils';
+import { Mark, ZigZagBand, DiamondBadge, LeafStem, BaladiDogEmblem, BaladiCatEmblem, BaladiGridBackground } from '../components/brand/Ornaments';
 import { GhostAnimal, Thunder } from '../components/brand/Ornaments2';
 
 export default function Home() {
   const { t, lang } = useLang();
-  const bestsellers = PRODUCTS.filter((p) => p.badge).slice(0, 4);
+  const products = useStorefront((s) => s.products);
+  const categories = useStorefront((s) => s.categories);
+  const story = useStorefront((s) => s.story);
+  const settings = useStorefront((s) => s.settings);
+  const isLoadingCatalog = useStorefront((s) => s.isLoadingCatalog);
+  const isLoadingContent = useStorefront((s) => s.isLoadingContent);
+
+  const featuredProducts = products.filter((p) => p.is_featured);
+  const bestsellers = (featuredProducts.length > 0 ? featuredProducts : products).slice(0, 4);
 
   return (
     <>
@@ -34,7 +50,13 @@ export default function Home() {
               </p>
             </div>
             <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-ink/70">
-              <Package className="h-4 w-4 text-baladi-red" /> {t('توصيل لكل المحافظات', 'Nationwide delivery')}
+              <Package className="h-4 w-4 text-baladi-red" />
+              {settings?.free_shipping_threshold
+                ? t(
+                    `شحن مجاني فوق ${settings.free_shipping_threshold} ج.م`,
+                    `Free shipping from ${settings.free_shipping_threshold} EGP`
+                  )
+                : t('توصيل لكل المحافظات', 'Nationwide delivery')}
             </div>
           </Reveal>
 
@@ -42,6 +64,8 @@ export default function Home() {
             {(['cats', 'dogs'] as const).map((key, idx) => {
               const s = SPECIES[key];
               const isCat = key === 'cats';
+              const worldCategories = categories.filter((c) => c.species === s.apiSpecies);
+              const worldProducts = products.filter((p) => p.species === s.apiSpecies);
               return (
                 <Reveal key={key} delay={idx * 0.08}>
                   <Tilt3D strength={7}>
@@ -52,6 +76,7 @@ export default function Home() {
                       }`}
                     >
                       <div className="absolute inset-0 opacity-[0.16] mix-blend-overlay" style={{ backgroundImage: 'radial-gradient(circle at 20% 10%, #fff 0%, transparent 45%)' }} />
+                      <BaladiGridBackground opacity={0.14} />
                       <Thunder color="rgba(251,187,33,.9)" height={20} className="absolute inset-x-0 top-0" />
                       <div className="absolute -bottom-6 end-[-4%] opacity-20 transition-transform duration-700 group-hover:scale-110">
                         {isCat ? (
@@ -63,7 +88,7 @@ export default function Home() {
                       <div className="relative z-10 flex flex-1 flex-col p-8 md:p-10">
                         <div className="flex items-start justify-between">
                           <div>
-                            <p className="t-eyebrow text-white/90">{s.latin}</p>
+                            <p className="t-eyebrow text-white/90">{s.eyebrow[lang]}</p>
                             <h3 className="t-display mt-2 text-[clamp(2.4rem,5vw,3.6rem)] text-white">{s.name[lang]}</h3>
                           </div>
                           <DiamondBadge size={38} ink="#23254F" accent="#FBBB21" dot="#FBF6EE" />
@@ -73,7 +98,11 @@ export default function Home() {
                           <span className="inline-flex items-center gap-2 rounded-full bg-white/20 px-5 py-3 text-[13px] font-black text-white backdrop-blur-md transition-colors group-hover:bg-white group-hover:text-ink">
                             {t('ادخل عالم', 'Enter the')} {s.name[lang]} <ArrowUpRight className="h-4 w-4" />
                           </span>
-                          <p className="mt-3 text-[11.5px] font-black uppercase tracking-[0.18em] text-white/85">{s.fact[lang]}</p>
+                          <p className="mt-3 text-[11.5px] font-black uppercase tracking-[0.18em] text-white/85">
+                            {worldCategories.length > 0 || worldProducts.length > 0
+                              ? `${worldCategories.length} ${t('أقسام', 'categories')} · ${worldProducts.length} ${t('منتج', 'products')}`
+                              : t('تغذية متوازنة يومياً', 'Balanced daily nutrition')}
+                          </p>
                         </div>
                       </div>
                     </Link>
@@ -87,9 +116,10 @@ export default function Home() {
 
       {/* ── BRAND STORY PLATE ──────────────────────────────────── */}
       <section className="relative overflow-hidden bg-ink py-20 text-cream md:py-28">
+        <BaladiGridBackground opacity={0.08} />
         <ZigZagBand color="#FBBB21" height={24} className="absolute inset-x-0 top-0 opacity-70" />
         <LeafStem className="absolute end-6 top-16 hidden opacity-25 md:block" color="#FBF6EE" height={180} />
-        <GhostAnimal species="dogs" src="/brand/dog-silhouette.png" className="-bottom-16 -start-20 h-[70%] w-auto" opacity={0.07} />
+        <GhostAnimal species="dogs" src="/brand/dog-emblem.png" className="-bottom-16 -start-20 h-[70%] w-auto" opacity={0.07} />
 
         <div className="u-container relative">
           <div className="grid items-center gap-14 lg:grid-cols-[1.05fr_0.95fr]">
@@ -99,18 +129,21 @@ export default function Home() {
                 {t('الحيوانات البلدى', 'Baladi animals')}<br />
                 <span className="text-baladi-yellow">{t('تستاهل أكل كامل', 'deserve complete food')}</span>
               </h2>
-              <p className="mt-6 max-w-lg text-[15px] font-medium leading-relaxed text-cream/90">
-                {t(
-                  'لو إنت زينا ومؤمن إن الإنسان والحيوان يعيشوا فى سلام، يبقى لازم تحب الحيوانات البلدى. فريقنا عمل البراند ده بهدف إطعام حيوانات الشارع طعام مغذّى.',
-                  'If you are like us and believe humans and animals should live in harmony, then you must love Baladi animals. Our team created this brand with the purpose of feeding stray animals nutritious food.'
-                )}
-              </p>
-              <p className="mt-4 max-w-lg text-[15px] font-medium leading-relaxed text-cream/90">
-                {t(
-                  'هدفنا إن قطط وكلاب مصر ما تنامش جيعانة أبداً.',
-                  'Our aim is that the stray dogs and cats of Egypt never sleep hungry.'
-                )}
-              </p>
+              {isLoadingContent && story.length === 0 ? (
+                <div className="mt-6 max-w-lg space-y-3">
+                  <div className="h-4 w-11/12 animate-pulse rounded-full bg-cream/15" />
+                  <div className="h-4 w-4/5 animate-pulse rounded-full bg-cream/15" />
+                  <div className="h-4 w-3/4 animate-pulse rounded-full bg-cream/10" />
+                </div>
+              ) : story.length > 0 ? (
+                <div className="mt-6 space-y-4">
+                  {story.slice(0, 2).map((sec, idx) => (
+                    <p key={idx} className="max-w-lg text-[15px] font-medium leading-relaxed text-cream/90">
+                      {sec.body}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link to="/story" className="btn btn-yellow">{t('اقرأ القصة كاملة', 'Read the full story')}</Link>
                 <Link to="/cats" className="btn btn-outline-light">{t('ابدأ التسوق', 'Shop now')}</Link>
@@ -145,20 +178,32 @@ export default function Home() {
         <div className="u-container">
           <Reveal className="mb-10 flex items-end justify-between gap-4">
             <div>
-              <p className="t-eyebrow text-baladi-red">{t('الأكثر مبيعاً', 'BESTSELLERS')}</p>
+              <p className="t-eyebrow text-baladi-red">{t('المميزة', 'FEATURED')}</p>
               <h2 className="t-display mt-3 text-[clamp(1.9rem,4.2vw,3.2rem)] text-ink">{t('اللى الناس بتشتريه', 'What people buy')}</h2>
             </div>
             <Link to="/cats" className="hidden text-[12.5px] font-black uppercase tracking-[0.16em] text-ink/75 hover:text-ink md:block">
               {t('كل المنتجات', 'All products')} <span className="inline-block rtl:rotate-180">→</span>
             </Link>
           </Reveal>
-          <div className="grid grid-cols-2 gap-4 md:gap-6 lg:grid-cols-4">
-            {bestsellers.map((p, i) => (
-              <Reveal key={p.id} delay={i * 0.06}>
-                <ProductCard product={p} />
-              </Reveal>
-            ))}
-          </div>
+          {isLoadingCatalog && products.length === 0 ? (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:gap-6 lg:grid-cols-4">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="h-80 animate-pulse rounded-[24px] border hairline bg-white/80 p-5">
+                  <div className="h-44 rounded-2xl bg-ink/[0.06]" />
+                  <div className="mt-4 h-3 w-1/2 rounded-full bg-ink/[0.08]" />
+                  <div className="mt-2 h-4 w-3/4 rounded-full bg-ink/[0.08]" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:gap-6 lg:grid-cols-4">
+              {bestsellers.map((p, i) => (
+                <Reveal key={p.id} delay={i * 0.06}>
+                  <ProductCard product={p} />
+                </Reveal>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -167,7 +212,7 @@ export default function Home() {
         <div className="u-container grid gap-6 lg:grid-cols-2">
           {(['cats', 'dogs'] as const).map((key) => {
             const s = SPECIES[key];
-            const items = bySpecies(key).slice(0, 3);
+            const items = products.filter((p) => p.species === s.apiSpecies).slice(0, 3);
             return (
               <div key={key} className={`relative overflow-hidden rounded-[30px] border hairline p-7 ${key === 'cats' ? 'theme-cat' : 'theme-dog'}`}>
                 <div className="flex items-center justify-between">
@@ -175,22 +220,44 @@ export default function Home() {
                   <Mark tone={s.mark} className="h-7" />
                 </div>
                 <div className="mt-6 space-y-2">
-                  {items.map((p) => (
-                    <Link
-                      key={p.id}
-                      to={`/product/${p.slug}`}
-                      className="flex items-center gap-4 rounded-2xl bg-cream/70 p-2.5 transition-colors hover:bg-cream"
-                    >
-                      <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-white">
-                        <img src={p.image} alt="" className="max-h-12 w-auto object-contain" loading="lazy" />
+                  {isLoadingCatalog && items.length === 0 ? (
+                    [0, 1, 2].map((i) => (
+                      <div key={i} className="flex items-center gap-4 rounded-2xl bg-cream/70 p-2.5">
+                        <div className="h-14 w-14 animate-pulse rounded-xl bg-white" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-3.5 w-2/3 animate-pulse rounded-full bg-ink/10" />
+                          <div className="h-3 w-1/3 animate-pulse rounded-full bg-ink/10" />
+                        </div>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-extrabold text-ink">{p.name[lang]}</p>
-                        <p className="text-[11.5px] font-semibold text-ink/75">{p.flavor[lang]} · {p.weight}</p>
-                      </div>
-                      <ArrowUpRight className="h-4 w-4 shrink-0 text-ink/60" />
-                    </Link>
-                  ))}
+                    ))
+                  ) : (
+                    items.map((p) => (
+                      <Link
+                        key={p.id}
+                        to={`/product/${p.slug}`}
+                        className="flex items-center gap-4 rounded-2xl bg-cream/70 p-2.5 transition-colors hover:bg-cream"
+                      >
+                        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-white p-1">
+                          <img
+                            src={resolveProductImage(p.image, p.species)}
+                            alt={getProductTitle(p, lang)}
+                            className="max-h-12 w-auto object-contain"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.src = getProductFallbackImage(p.species);
+                            }}
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13px] font-extrabold text-ink">{getProductTitle(p, lang)}</p>
+                          <p className="text-[11.5px] font-semibold text-ink/75">
+                            {getCategoryTitle(p.category, lang)} · {egp(p.price, lang)}
+                          </p>
+                        </div>
+                        <ArrowUpRight className="h-4 w-4 shrink-0 text-ink/60" />
+                      </Link>
+                    ))
+                  )}
                 </div>
                 <Link to={`/${key}`} className="mt-5 inline-flex items-center gap-1.5 text-[12px] font-black uppercase tracking-[0.16em] text-ink/80 hover:text-ink">
                   {t('كل منتجات', 'All')} {s.name[lang]} <span className="inline-block rtl:rotate-180">→</span>

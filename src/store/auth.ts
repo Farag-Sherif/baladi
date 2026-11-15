@@ -1,356 +1,416 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import type { CourierStatus } from '../lib/shipping/types';
+import {
+  addressesApi,
+  ApiError,
+  authApi,
+  extractErrorMessage,
+  favoritesApi,
+  getStoredToken,
+  localizedFallback,
+  notificationsApi,
+  ordersApi,
+  registerUnauthorizedHandler,
+  setStoredToken,
+  type ApiAddress,
+  type ApiCustomer,
+  type ApiNotification,
+  type ApiOrder,
+  type ApiProduct,
+} from '../lib/api';
+import { useCart } from './cart';
+import type { Lang } from '../lib/lang';
 
-export interface Pet {
-  id: string;
-  name: string;
-  species: 'cat' | 'dog';
-  age: string;
-  weight: string;
-  food: string;
-}
+export type { ApiAddress as UserAddress, ApiOrder as Order, ApiCustomer as User };
 
-export interface UserAddress {
-  id: string;
-  title: string;
-  governorate: string;
-  city: string;
-  street: string;
-  building?: string;
-  isDefault: boolean;
-}
-
-export interface OrderItem {
-  id: string;
-  slug: string;
-  nameAr: string;
-  nameEn: string;
-  image: string;
-  price: number;
-  qty: number;
-  weight: string;
-}
-
-export interface Order {
-  id: string;
-  orderNumber: string;
-  date: string;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered';
-  items: OrderItem[];
-  subtotal: number;
-  shipping: number;
-  total: number;
-  governorate: string;
-  address: string;
-  // Shipping Integration fields (Porter & Egyptian Couriers)
-  shippingCarrier?: string;
-  shippingTrackingNumber?: string;
-  shippingWaybill?: string;
-  shippingStatus?: CourierStatus;
-  shippingTrackingUrl?: string;
-  estimatedDelivery?: string;
-  porterSyncReady?: boolean;
-}
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  governorate: string;
-  address: string;
-  avatar: string;
-  preferredSpecies: 'cats' | 'dogs' | 'both';
-  createdAt: string;
+export interface AuthActionResult {
+  success: boolean;
+  error?: string;
+  errors?: Record<string, string[]>;
 }
 
 interface AuthState {
-  user: User | null;
+  token: string | null;
+  user: ApiCustomer | null;
   isAuthenticated: boolean;
-  pets: Pet[];
-  addresses: UserAddress[];
-  orders: Order[];
-  
-  // Actions
-  login: (emailOrPhone: string, password?: string) => Promise<{ success: boolean; error?: string }>;
-  register: (data: Omit<User, 'id' | 'createdAt' | 'avatar'> & { password?: string }) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
-  updateProfile: (data: Partial<User>) => void;
-  changePassword: (oldPass: string, newPass: string) => Promise<{ success: boolean; error?: string }>;
-  resetPassword: (emailOrPhone: string, newPass: string) => Promise<{ success: boolean; error?: string }>;
-  
-  // Pet management
-  addPet: (pet: Omit<Pet, 'id'>) => void;
-  removePet: (id: string) => void;
-  
-  // Address management
-  addAddress: (address: Omit<UserAddress, 'id'>) => void;
-  removeAddress: (id: string) => void;
-  setDefaultAddress: (id: string) => void;
+  isHydrating: boolean;
+  addresses: ApiAddress[];
+  orders: ApiOrder[];
+  favorites: ApiProduct[];
+  notifications: ApiNotification[];
+  unreadNotifications: number;
 
-  // Order management
-  addOrder: (order: Order) => void;
+  initAuth: (lang?: Lang) => Promise<void>;
+  hydrateAccountData: (lang?: Lang) => Promise<void>;
+  clearSession: () => void;
+
+  login: (email: string, password: string) => Promise<AuthActionResult>;
+  register: (payload: {
+    name: string;
+    email: string;
+    phone: string;
+    password: string;
+    password_confirmation: string;
+  }) => Promise<AuthActionResult>;
+  logout: () => Promise<void>;
+  updateProfile: (payload: {
+    name?: string;
+    phone?: string;
+    password?: string;
+    password_confirmation?: string;
+  }) => Promise<AuthActionResult>;
+
+  fetchAddresses: () => Promise<void>;
+  createAddress: (payload: {
+    label: string;
+    name: string;
+    phone: string;
+    governorate_id: number;
+    line: string;
+    is_default?: boolean;
+  }) => Promise<AuthActionResult>;
+  updateAddress: (
+    id: number,
+    payload: Partial<{
+      label: string;
+      name: string;
+      phone: string;
+      governorate_id: number;
+      line: string;
+    }>
+  ) => Promise<AuthActionResult>;
+  setDefaultAddress: (id: number) => Promise<void>;
+  deleteAddress: (id: number) => Promise<void>;
+
+  fetchOrders: (lang?: Lang) => Promise<void>;
+  trackOrder: (orderNumber: string, phone?: string, lang?: Lang) => Promise<ApiOrder>;
+
+  fetchFavorites: (lang?: Lang) => Promise<void>;
+  toggleFavorite: (product: ApiProduct) => Promise<{ ok: boolean; requiresAuth?: boolean; error?: string }>;
+  removeFavorite: (productId: number) => Promise<void>;
+
+  fetchNotifications: (lang?: Lang) => Promise<void>;
+  fetchUnreadCount: () => Promise<void>;
+  markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
 }
 
-// Initial demo user with real-world sample data so the user can immediately experience the pages
-const DEMO_USER: User = {
-  id: 'usr_baladi_01',
-  name: 'أحمد محمود',
-  email: 'ahmed@baladi.pet',
-  phone: '01012345678',
-  governorate: 'الجيزة',
-  address: 'شارع الهرم، بجوار محطة المترو، عمارة 14 الدور 3',
-  avatar: 'cat',
-  preferredSpecies: 'both',
-  createdAt: '2024-03-15',
-};
+let initialized = false;
 
-const INITIAL_PETS: Pet[] = [
-  {
-    id: 'pet_1',
-    name: 'مشمش',
-    species: 'cat',
-    age: 'سنتين',
-    weight: '3.8 كجم',
-    food: 'طعام جاف كامل للقطط البالغة — دجاج',
-  },
-  {
-    id: 'pet_2',
-    name: 'صخر',
-    species: 'dog',
-    age: 'سنة ونصف',
-    weight: '16 كجم',
-    food: 'طعام جاف كامل للكلاب البالغة — لحم وخضار',
-  },
-];
+export const useAuth = create<AuthState>((set, get) => {
+  registerUnauthorizedHandler(() => {
+    get().clearSession();
+  });
 
-const INITIAL_ADDRESSES: UserAddress[] = [
-  {
-    id: 'addr_1',
-    title: 'المنزل',
-    governorate: 'الجيزة',
-    city: 'الدقي',
-    street: 'شارع مصدق، عمارة الأمل، الدور الخامس شقة 10',
-    isDefault: true,
-  },
-  {
-    id: 'addr_2',
-    title: 'العمل',
-    governorate: 'القاهرة',
-    city: 'المعادي',
-    street: 'القرية الذكية / شارع اللاسلكي',
-    isDefault: false,
-  },
-];
+  return {
+    token: getStoredToken(),
+    user: null,
+    isAuthenticated: Boolean(getStoredToken()),
+    isHydrating: false,
+    addresses: [],
+    orders: [],
+    favorites: [],
+    notifications: [],
+    unreadNotifications: 0,
 
-const INITIAL_ORDERS: Order[] = [
-  {
-    id: 'ord_101',
-    orderNumber: 'BLD-2026-8841',
-    date: '2026-10-24',
-    status: 'delivered',
-    items: [
-      {
-        id: 'cat-adult-chicken-10k',
-        slug: 'cat-adult-chicken-10k',
-        nameAr: 'طعام جاف للقطط البالغة · دجاج',
-        nameEn: 'Adult Cat Dry Food · Chicken',
-        image: '/packs/cat-adult-pack.png',
-        price: 840,
-        qty: 1,
-        weight: '10 كجم',
-      },
-      {
-        id: 'cat-kitten-chicken-10k',
-        slug: 'cat-kitten-chicken-10k',
-        nameAr: 'طعام جاف للكيتن والقطط الصغيرة',
-        nameEn: 'Kitten Dry Food · Chicken & Milk',
-        image: '/packs/cat-kitten-pack.png',
-        price: 890,
-        qty: 1,
-        weight: '10 كجم',
-      },
-    ],
-    subtotal: 1730,
-    shipping: 55,
-    total: 1785,
-    governorate: 'الجيزة',
-    address: 'شارع الهرم، بجوار محطة المترو، عمارة 14 الدور 3',
-  },
-  {
-    id: 'ord_102',
-    orderNumber: 'BLD-2026-9104',
-    date: '2026-11-01',
-    status: 'processing',
-    items: [
-      {
-        id: 'dog-adult-chicken-15k',
-        slug: 'dog-adult-chicken-15k',
-        nameAr: 'طعام جاف للكلاب البالغة · دجاج',
-        nameEn: 'Adult Dog Dry Food · Chicken',
-        image: '/packs/dog-adult-pack.png',
-        price: 980,
-        qty: 2,
-        weight: '15 كجم',
-      },
-    ],
-    subtotal: 1960,
-    shipping: 55,
-    total: 2015,
-    governorate: 'الجيزة',
-    address: 'شارع الهرم، بجوار محطة المترو، عمارة 14 الدور 3',
-  },
-];
+    clearSession: () => {
+      setStoredToken(null);
+      set({
+        token: null,
+        user: null,
+        isAuthenticated: false,
+        isHydrating: false,
+        addresses: [],
+        orders: [],
+        favorites: [],
+        notifications: [],
+        unreadNotifications: 0,
+      });
+    },
 
-export const useAuth = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      user: null,
-      isAuthenticated: false,
-      pets: INITIAL_PETS,
-      addresses: INITIAL_ADDRESSES,
-      orders: INITIAL_ORDERS,
-
-      login: async (emailOrPhone, _password) => {
-        // Simple client-side simulation with delay for smooth UX
-        await new Promise((res) => setTimeout(res, 500));
-        
-        if (!emailOrPhone.trim()) {
-          return { success: false, error: 'برجاء إدخال البريد الإلكتروني أو رقم الهاتف' };
-        }
-
-        // If logging in as demo user or any user, create/populate session
-        const namePart = emailOrPhone.includes('@') ? emailOrPhone.split('@')[0] : 'صديق بلدي';
-        const formattedName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-
-        const loggedUser: User = {
-          id: 'usr_' + Date.now(),
-          name: emailOrPhone === DEMO_USER.email || emailOrPhone === DEMO_USER.phone ? DEMO_USER.name : formattedName,
-          email: emailOrPhone.includes('@') ? emailOrPhone : `${emailOrPhone}@baladi.pet`,
-          phone: emailOrPhone.match(/^[0-9+]+$/) ? emailOrPhone : '01099887766',
-          governorate: 'الجيزة',
-          address: 'القاهرة والجيزة، مصر',
-          avatar: 'both',
-          preferredSpecies: 'both',
-          createdAt: new Date().toISOString().split('T')[0],
-        };
-
+    initAuth: async (lang) => {
+      const token = getStoredToken();
+      if (!token) {
+        if (get().isAuthenticated) get().clearSession();
+        return;
+      }
+      if (initialized && get().user) {
+        await get().hydrateAccountData(lang);
+        return;
+      }
+      initialized = true;
+      set({ isHydrating: true, token });
+      try {
+        const me = await authApi.me();
         set({
-          user: loggedUser,
+          user: me.data,
           isAuthenticated: true,
         });
+        await get().hydrateAccountData(lang);
+      } catch {
+        get().clearSession();
+      } finally {
+        set({ isHydrating: false });
+      }
+    },
 
-        return { success: true };
-      },
+    hydrateAccountData: async (lang) => {
+      if (!getStoredToken()) return;
+      await Promise.allSettled([
+        get().fetchAddresses(),
+        get().fetchOrders(lang),
+        get().fetchFavorites(lang),
+        get().fetchNotifications(lang),
+      ]);
+    },
 
-      register: async (data) => {
-        await new Promise((res) => setTimeout(res, 600));
-
-        if (!data.name.trim() || !data.email.trim() || !data.phone.trim()) {
-          return { success: false, error: 'برجاء ملء جميع البيانات المطلوبة' };
-        }
-
-        const newUser: User = {
-          ...data,
-          id: 'usr_' + Date.now(),
-          avatar: data.preferredSpecies === 'cats' ? 'cat' : data.preferredSpecies === 'dogs' ? 'dog' : 'both',
-          createdAt: new Date().toISOString().split('T')[0],
-        };
-
+    login: async (email, password) => {
+      try {
+        const res = await authApi.login({ email: email.trim(), password });
+        const { token, customer } = res.data;
+        setStoredToken(token);
+        initialized = true;
         set({
-          user: newUser,
+          token,
+          user: customer,
           isAuthenticated: true,
         });
-
+        await Promise.allSettled([
+          get().hydrateAccountData(),
+          useCart.getState().fetchCart(),
+        ]);
         return { success: true };
-      },
-
-      logout: () => {
-        set({
-          user: null,
-          isAuthenticated: false,
-        });
-      },
-
-      updateProfile: (data) => {
-        const current = get().user;
-        if (!current) return;
-        set({
-          user: { ...current, ...data },
-        });
-      },
-
-      changePassword: async (_oldPass, newPass) => {
-        await new Promise((res) => setTimeout(res, 500));
-        if (!newPass || newPass.length < 6) {
-          return { success: false, error: 'كلمة المرور يجب أن لا تقل عن 6 أحرف أو أرقام' };
-        }
-        return { success: true };
-      },
-
-      resetPassword: async (emailOrPhone, newPass) => {
-        await new Promise((res) => setTimeout(res, 600));
-        if (!emailOrPhone.trim()) {
-          return { success: false, error: 'برجاء إدخال البريد الإلكتروني أو رقم الهاتف' };
-        }
-        if (!newPass || newPass.length < 6) {
-          return { success: false, error: 'كلمة المرور يجب أن لا تقل عن 6 أحرف أو أرقام' };
-        }
-        return { success: true };
-      },
-
-      addPet: (pet) => {
-        const newPet: Pet = {
-          ...pet,
-          id: 'pet_' + Date.now(),
+      } catch (err) {
+        return {
+          success: false,
+          error: extractErrorMessage(err, localizedFallback('بيانات الدخول غير صحيحة', 'Invalid login credentials')),
+          errors: err instanceof ApiError ? err.errors : undefined,
         };
-        set({ pets: [newPet, ...get().pets] });
-      },
+      }
+    },
 
-      removePet: (id) => {
-        set({ pets: get().pets.filter((p) => p.id !== id) });
-      },
-
-      addAddress: (address) => {
-        const newAddress: UserAddress = {
-          ...address,
-          id: 'addr_' + Date.now(),
+    register: async (payload) => {
+      try {
+        const res = await authApi.register({
+          name: payload.name.trim(),
+          email: payload.email.trim(),
+          phone: payload.phone.trim(),
+          password: payload.password,
+          password_confirmation: payload.password_confirmation,
+        });
+        const { token, customer } = res.data;
+        setStoredToken(token);
+        initialized = true;
+        set({
+          token,
+          user: customer,
+          isAuthenticated: true,
+        });
+        await Promise.allSettled([
+          get().hydrateAccountData(),
+          useCart.getState().fetchCart(),
+        ]);
+        return { success: true };
+      } catch (err) {
+        return {
+          success: false,
+          error: extractErrorMessage(err, localizedFallback('تعذر إنشاء الحساب', 'Unable to create account')),
+          errors: err instanceof ApiError ? err.errors : undefined,
         };
-        const updated = address.isDefault
-          ? get().addresses.map((a) => ({ ...a, isDefault: false }))
-          : get().addresses;
-        set({ addresses: [...updated, newAddress] });
-      },
+      }
+    },
 
-      removeAddress: (id) => {
-        set({ addresses: get().addresses.filter((a) => a.id !== id) });
-      },
+    logout: async () => {
+      try {
+        if (getStoredToken()) {
+          await authApi.logout();
+        }
+      } catch {
+        /* ignore revocation errors when signing out */
+      } finally {
+        initialized = false;
+        get().clearSession();
+        await useCart.getState().fetchCart();
+      }
+    },
 
-      setDefaultAddress: (id) => {
+    updateProfile: async (payload) => {
+      try {
+        const res = await authApi.updateProfile(payload);
+        set({ user: res.data });
+        return { success: true };
+      } catch (err) {
+        return {
+          success: false,
+          error: extractErrorMessage(err, localizedFallback('تعذر تحديث البيانات', 'Unable to update profile')),
+          errors: err instanceof ApiError ? err.errors : undefined,
+        };
+      }
+    },
+
+    fetchAddresses: async () => {
+      if (!getStoredToken()) return;
+      try {
+        const res = await addressesApi.list();
+        set({ addresses: res.data || [] });
+      } catch {
+        /* handled safely */
+      }
+    },
+
+    createAddress: async (payload) => {
+      try {
+        await addressesApi.create(payload);
+        await get().fetchAddresses();
+        return { success: true };
+      } catch (err) {
+        return {
+          success: false,
+          error: extractErrorMessage(err, localizedFallback('تعذر حفظ العنوان', 'Unable to save address')),
+          errors: err instanceof ApiError ? err.errors : undefined,
+        };
+      }
+    },
+
+    updateAddress: async (id, payload) => {
+      try {
+        await addressesApi.update(id, payload);
+        await get().fetchAddresses();
+        return { success: true };
+      } catch (err) {
+        return {
+          success: false,
+          error: extractErrorMessage(err, localizedFallback('تعذر تحديث العنوان', 'Unable to update address')),
+        };
+      }
+    },
+
+    setDefaultAddress: async (id) => {
+      try {
+        await addressesApi.setDefault(id);
+        await get().fetchAddresses();
+      } catch {
+        /* ignore */
+      }
+    },
+
+    deleteAddress: async (id) => {
+      try {
+        await addressesApi.remove(id);
+        await get().fetchAddresses();
+      } catch {
+        /* ignore */
+      }
+    },
+
+    fetchOrders: async (lang) => {
+      if (!getStoredToken()) return;
+      try {
+        const res = await ordersApi.myOrders(1, lang);
+        set({ orders: res.data || [] });
+      } catch {
+        /* ignore */
+      }
+    },
+
+    trackOrder: async (orderNumber, phone, lang) => {
+      const res = await ordersApi.trackOrder(orderNumber, phone, lang);
+      return res.data;
+    },
+
+    fetchFavorites: async (lang) => {
+      if (!getStoredToken()) return;
+      try {
+        const res = await favoritesApi.list(lang);
+        set({ favorites: res.data || [] });
+      } catch {
+        /* ignore */
+      }
+    },
+
+    toggleFavorite: async (product) => {
+      if (!getStoredToken()) {
+        return { ok: false, requiresAuth: true };
+      }
+      const exists = get().favorites.some((f) => f.id === product.id);
+      try {
+        if (exists) {
+          await favoritesApi.remove(product.id);
+          set((s) => ({ favorites: s.favorites.filter((f) => f.id !== product.id) }));
+        } else {
+          await favoritesApi.add(product.id);
+          set((s) => ({
+            favorites: s.favorites.some((f) => f.id === product.id)
+              ? s.favorites
+              : [product, ...s.favorites],
+          }));
+        }
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, error: extractErrorMessage(err) };
+      }
+    },
+
+    removeFavorite: async (productId) => {
+      try {
+        await favoritesApi.remove(productId);
+        set((s) => ({ favorites: s.favorites.filter((f) => f.id !== productId) }));
+      } catch {
+        /* ignore */
+      }
+    },
+
+    fetchNotifications: async (lang) => {
+      if (!getStoredToken()) return;
+      try {
+        const res = await notificationsApi.list(false, lang);
         set({
-          addresses: get().addresses.map((a) => ({
-            ...a,
-            isDefault: a.id === id,
-          })),
+          notifications: res.data || [],
+          unreadNotifications: res.meta?.unread ?? (res.data || []).filter((n) => !n.read).length,
         });
-      },
+      } catch {
+        /* ignore */
+      }
+    },
 
-      addOrder: (order) => {
-        set({
-          orders: [order, ...get().orders],
+    fetchUnreadCount: async () => {
+      if (!getStoredToken()) return;
+      try {
+        const res = await notificationsApi.unreadCount();
+        const unread = res.data?.unread ?? res.unread ?? 0;
+        set({ unreadNotifications: unread });
+      } catch {
+        /* ignore */
+      }
+    },
+
+    markNotificationRead: async (id) => {
+      try {
+        await notificationsApi.markRead(id);
+        set((s) => {
+          const updated = s.notifications.map((n) =>
+            n.id === id ? { ...n, read: true, read_at: n.read_at || new Date().toISOString() } : n
+          );
+          return {
+            notifications: updated,
+            unreadNotifications: updated.filter((n) => !n.read).length,
+          };
         });
-      },
-    }),
-    {
-      name: 'baladi-auth',
-      partialize: (s) => ({
-        user: s.user,
-        isAuthenticated: s.isAuthenticated,
-        pets: s.pets,
-        addresses: s.addresses,
-        orders: s.orders,
-      }),
-    }
-  )
-);
+      } catch {
+        /* ignore */
+      }
+    },
+
+    markAllNotificationsRead: async () => {
+      try {
+        await notificationsApi.markAllRead();
+        const now = new Date().toISOString();
+        set((s) => ({
+          notifications: s.notifications.map((n) => ({ ...n, read: true, read_at: n.read_at || now })),
+          unreadNotifications: 0,
+        }));
+      } catch {
+        /* ignore */
+      }
+    },
+  };
+});

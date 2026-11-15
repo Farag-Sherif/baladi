@@ -1,20 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, Lock, Eye, EyeOff, UserPlus, CheckCircle2, AlertCircle, MapPin, Sparkles } from 'lucide-react';
+import { User, Mail, Phone, Lock, Eye, EyeOff, UserPlus, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../store/auth';
 import { useLang } from '../lib/lang';
-import { Mark, ZigZagBand, DiamondBadge, BaladiCatEmblem, BaladiDogEmblem, BaladiDuoEmblem } from '../components/brand/Ornaments';
-
-const GOVS = [
-  { ar: 'الجيزة', en: 'Giza' },
-  { ar: 'القاهرة', en: 'Cairo' },
-  { ar: 'الإسكندرية', en: 'Alexandria' },
-  { ar: 'الدقهلية', en: 'Dakahlia' },
-  { ar: 'الشرقية', en: 'Sharqia' },
-  { ar: 'القليوبية', en: 'Qalyubia' },
-  { ar: 'أسيوط', en: 'Assiut' },
-  { ar: 'الأقصر', en: 'Luxor' },
-];
+import { Mark, ZigZagBand } from '../components/brand/Ornaments';
 
 export default function RegisterPage() {
   const { t, lang } = useLang();
@@ -24,9 +13,6 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [governorate, setGovernorate] = useState('الجيزة');
-  const [address, setAddress] = useState('');
-  const [species, setSpecies] = useState<'cats' | 'dogs' | 'both'>('both');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -48,12 +34,12 @@ export default function RegisterPage() {
       setError(t('برجاء إدخال بريد إلكتروني صحيح', 'Please enter a valid email address'));
       return;
     }
-    if (!phone.trim()) {
-      setError(t('برجاء إدخال رقم الهاتف', 'Please enter your phone number'));
+    if (!phone.trim() || phone.trim().length < 10) {
+      setError(t('برجاء إدخال رقم هاتف صحيح', 'Please enter a valid phone number'));
       return;
     }
-    if (!password || password.length < 6) {
-      setError(t('كلمة المرور يجب أن لا تقل عن 6 أحرف', 'Password must be at least 6 characters'));
+    if (!password || password.length < 8) {
+      setError(t('كلمة المرور يجب أن لا تقل عن 8 أحرف', 'Password must be at least 8 characters'));
       return;
     }
     if (password !== confirmPassword) {
@@ -67,13 +53,11 @@ export default function RegisterPage() {
 
     setLoading(true);
     const res = await register({
-      name,
-      email,
-      phone,
-      governorate,
-      address,
-      preferredSpecies: species,
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
       password,
+      password_confirmation: confirmPassword,
     });
     setLoading(false);
 
@@ -81,7 +65,7 @@ export default function RegisterPage() {
       setSuccess(true);
       setTimeout(() => {
         navigate('/profile', { replace: true });
-      }, 700);
+      }, 450);
     } else {
       setError(res.error || t('حدث خطأ أثناء إنشاء الحساب', 'Error creating account'));
     }
@@ -100,14 +84,13 @@ export default function RegisterPage() {
             {t('إنشاء حساب جديد', 'Create Account')}
           </h1>
           <p className="mt-3 text-[15px] font-medium text-cream/90">
-            {t('سجّل حسابك واعتنِ بأليفك وبحيوانات الشارع معنا بكل سهولة.', 'Sign up and nourish your pets and community animals with us.')}
+            {t('سجّل حسابك لحفظ عناوينك ومتابعة طلباتك والمفضلة بسهولة.', 'Create your account to save addresses, track orders, and manage favorites.')}
           </p>
         </div>
       </div>
 
       <div className="u-container -mt-6 pb-20">
         <div className="mx-auto max-w-xl rounded-[32px] border hairline bg-white p-6 shadow-soft md:p-8">
-          {/* Top navigation tabs */}
           <div className="mb-6 grid grid-cols-2 gap-2 rounded-2xl bg-cream p-1.5 text-center text-sm font-black">
             <Link
               to="/login"
@@ -148,7 +131,7 @@ export default function RegisterPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder={lang === 'ar' ? 'مثال: سارة أحمد' : 'e.g. Sarah Ahmed'}
-                  className="w-full rounded-2xl border hairline bg-cream/50 py-3 ps-10 pe-4 text-sm font-bold text-ink placeholder:text-ink/40 focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
+                  className="w-full rounded-2xl border hairline bg-cream/50 py-3 pe-4 ps-10 text-sm font-bold text-ink placeholder:text-ink/40 focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
                 />
               </div>
             </div>
@@ -165,10 +148,11 @@ export default function RegisterPage() {
                   <input
                     type="email"
                     dir="ltr"
+                    autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@example.com"
-                    className="w-full rounded-2xl border hairline bg-cream/50 py-3 ps-10 pe-4 text-sm font-bold text-ink placeholder:text-ink/40 focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
+                    className="w-full rounded-2xl border hairline bg-cream/50 py-3 pe-4 ps-10 text-sm font-bold text-ink placeholder:text-ink/40 focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
                   />
                 </div>
               </div>
@@ -187,7 +171,7 @@ export default function RegisterPage() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="01012345678"
-                    className="w-full rounded-2xl border hairline bg-cream/50 py-3 ps-10 pe-4 text-sm font-bold text-ink placeholder:text-ink/40 focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
+                    className="w-full rounded-2xl border hairline bg-cream/50 py-3 pe-4 ps-10 text-sm font-bold text-ink placeholder:text-ink/40 focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
                   />
                 </div>
               </div>
@@ -196,82 +180,7 @@ export default function RegisterPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="block text-[12.5px] font-extrabold uppercase tracking-wider text-ink/80">
-                  {t('المحافظة', 'Governorate')}
-                </label>
-                <div className="relative mt-2">
-                  <span className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3.5 text-ink/50">
-                    <MapPin className="h-4 w-4" />
-                  </span>
-                  <select
-                    value={governorate}
-                    onChange={(e) => setGovernorate(e.target.value)}
-                    className="w-full rounded-2xl border hairline bg-cream/50 py-3 ps-10 pe-4 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
-                  >
-                    {GOVS.map((g) => (
-                      <option key={g.en} value={g.ar}>
-                        {lang === 'ar' ? g.ar : g.en}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[12.5px] font-extrabold uppercase tracking-wider text-ink/80">
-                  {t('اهتمامك المفضل', 'Pet Interest')}
-                </label>
-                <div className="mt-2 grid grid-cols-3 gap-1.5 rounded-2xl bg-cream/70 p-1 text-center text-xs font-black text-ink">
-                  <button
-                    type="button"
-                    onClick={() => setSpecies('cats')}
-                    className={`inline-flex items-center justify-center gap-1.5 rounded-xl py-2.5 transition-colors ${
-                      species === 'cats' ? 'bg-baladi-red text-white shadow-sm' : 'hover:bg-cream'
-                    }`}
-                  >
-                    <BaladiCatEmblem size={17} color={species === 'cats' ? '#FFFFFF' : '#E84249'} />
-                    <span>{t('قطط', 'Cats')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSpecies('dogs')}
-                    className={`inline-flex items-center justify-center gap-1.5 rounded-xl py-2.5 transition-colors ${
-                      species === 'dogs' ? 'bg-baladi-green text-white shadow-sm' : 'hover:bg-cream'
-                    }`}
-                  >
-                    <BaladiDogEmblem size={17} color={species === 'dogs' ? '#FFFFFF' : '#1E996C'} />
-                    <span>{t('كلاب', 'Dogs')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSpecies('both')}
-                    className={`inline-flex items-center justify-center gap-1.5 rounded-xl py-2.5 transition-colors ${
-                      species === 'both' ? 'bg-ink text-white shadow-sm' : 'hover:bg-cream'
-                    }`}
-                  >
-                    <BaladiDuoEmblem size={15} color="currentColor" />
-                    <span>{t('كلاهما', 'Both')}</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[12.5px] font-extrabold uppercase tracking-wider text-ink/80">
-                {t('العنوان التفصيلي (اختياري)', 'Address (Optional)')}
-              </label>
-              <input
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder={lang === 'ar' ? 'المنطقة، الشارع، رقم العمارة أو الشقة' : 'District, street, building or flat'}
-                className="mt-2 w-full rounded-2xl border hairline bg-cream/50 py-3 px-4 text-sm font-bold text-ink placeholder:text-ink/40 focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="block text-[12.5px] font-extrabold uppercase tracking-wider text-ink/80">
-                  {t('كلمة المرور', 'Password')} *
+                  {t('كلمة المرور (8 أحرف على الأقل)', 'Password (min 8 chars)')} *
                 </label>
                 <div className="relative mt-2">
                   <span className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3.5 text-ink/50">
@@ -280,16 +189,17 @@ export default function RegisterPage() {
                   <input
                     type={showPass ? 'text' : 'password'}
                     dir="ltr"
+                    autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full rounded-2xl border hairline bg-cream/50 py-3 ps-10 pe-11 text-sm font-bold text-ink placeholder:text-ink/40 focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
+                    className="w-full rounded-2xl border hairline bg-cream/50 py-3 pe-11 ps-10 text-sm font-bold text-ink placeholder:text-ink/40 focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPass(!showPass)}
                     className="absolute inset-y-0 end-0 flex items-center pe-3.5 text-ink/50 hover:text-ink"
-                    aria-label={showPass ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                    aria-label={showPass ? t('إخفاء كلمة المرور', 'Hide password') : t('إظهار كلمة المرور', 'Show password')}
                   >
                     {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -307,10 +217,11 @@ export default function RegisterPage() {
                   <input
                     type={showPass ? 'text' : 'password'}
                     dir="ltr"
+                    autoComplete="new-password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full rounded-2xl border hairline bg-cream/50 py-3 ps-10 pe-4 text-sm font-bold text-ink placeholder:text-ink/40 focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
+                    className="w-full rounded-2xl border hairline bg-cream/50 py-3 pe-4 ps-10 text-sm font-bold text-ink placeholder:text-ink/40 focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
                   />
                 </div>
               </div>

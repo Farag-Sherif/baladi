@@ -1,13 +1,13 @@
-import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   User as UserIcon,
-  Mail,
   Phone,
   MapPin,
   Lock,
   Package,
   Heart,
+  Bell,
   Plus,
   Trash2,
   CheckCircle2,
@@ -17,89 +17,117 @@ import {
   ShieldCheck,
   RotateCcw,
   Clock,
-  Sparkles,
-  ChevronRight,
+  Check,
   Truck,
+  ShoppingBag,
 } from 'lucide-react';
-import { useAuth, type Pet, type UserAddress } from '../store/auth';
+import { useAuth } from '../store/auth';
 import { useCart } from '../store/cart';
+import { useStorefront } from '../store/storefront';
+import {
+  catalogApi,
+  getCategoryTitle,
+  getProductFallbackImage,
+  getProductTitle,
+  resolveProductImage,
+  type ApiAddress,
+  type ApiOrder,
+} from '../lib/api';
 import { useLang } from '../lib/lang';
 import { egp } from '../lib/utils';
-import { PRODUCTS } from '../data/catalog';
-import { Mark, ZigZagBand, DiamondBadge, BaladiCatEmblem, BaladiDogEmblem, BaladiDuoEmblem, SpeciesAvatar } from '../components/brand/Ornaments';
+import { Mark, ZigZagBand, BaladiDuoEmblem } from '../components/brand/Ornaments';
 
-const GOVS = [
-  { ar: 'الجيزة', en: 'Giza' },
-  { ar: 'القاهرة', en: 'Cairo' },
-  { ar: 'الإسكندرية', en: 'Alexandria' },
-  { ar: 'الدقهلية', en: 'Dakahlia' },
-  { ar: 'الشرقية', en: 'Sharqia' },
-  { ar: 'القليوبية', en: 'Qalyubia' },
-  { ar: 'أسيوط', en: 'Assiut' },
-  { ar: 'الأقصر', en: 'Luxor' },
-];
-
-const AVATARS = ['both', 'cat', 'dog', 'cat-badge', 'dog-badge', 'star'];
+type Tab = 'profile' | 'security' | 'orders' | 'addresses' | 'favorites' | 'notifications';
+const VALID_TABS: Tab[] = ['profile', 'security', 'orders', 'addresses', 'favorites', 'notifications'];
 
 export default function ProfilePage() {
   const { t, lang } = useLang();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const {
     user,
     isAuthenticated,
+    isHydrating,
     logout,
     updateProfile,
-    changePassword,
-    pets,
-    addPet,
-    removePet,
     addresses,
-    addAddress,
-    removeAddress,
+    createAddress,
+    updateAddress,
     setDefaultAddress,
+    deleteAddress,
     orders,
+    favorites,
+    removeFavorite,
+    notifications,
+    unreadNotifications,
+    markNotificationRead,
+    markAllNotificationsRead,
   } = useAuth();
+
+  const governorates = useStorefront((s) => s.governorates);
+  const catalogProducts = useStorefront((s) => s.products);
   const addCart = useCart((s) => s.add);
+  const addById = useCart((s) => s.addById);
 
-  type Tab = 'profile' | 'security' | 'pets' | 'orders' | 'addresses';
-  const [activeTab, setActiveTab] = useState<Tab>('profile');
+  const tabParam = searchParams.get('tab') as Tab | null;
+  const activeTab: Tab = tabParam && VALID_TABS.includes(tabParam) ? tabParam : 'profile';
 
-  // Edit profile state
+  const setActiveTab = (tab: Tab) => {
+    setSearchParams(tab === 'profile' ? {} : { tab }, { replace: true });
+  };
+
+  // Profile edit state
   const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
-  const [governorate, setGovernorate] = useState(user?.governorate || 'الجيزة');
-  const [address, setAddress] = useState(user?.address || '');
-  const [avatar, setAvatar] = useState(user?.avatar || 'both');
-  const [preferredSpecies, setPreferredSpecies] = useState<'cats' | 'dogs' | 'both'>(
-    user?.preferredSpecies || 'both'
-  );
+  const [profileLoading, setProfileLoading] = useState(false);
   const [profileMsg, setProfileMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  // Change password state
-  const [oldPassword, setOldPassword] = useState('');
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '');
+      setPhone(user.phone || '');
+    }
+  }, [user]);
+
+  // Security / change password state
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passMsg, setPassMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [passLoading, setPassLoading] = useState(false);
 
-  // New Pet state
-  const [showAddPet, setShowAddPet] = useState(false);
-  const [petName, setPetName] = useState('');
-  const [petSpecies, setPetSpecies] = useState<'cat' | 'dog'>('cat');
-  const [petAge, setPetAge] = useState('');
-  const [petWeight, setPetWeight] = useState('');
-  const [petFood, setPetFood] = useState('');
-
-  // New Address state
-  const [showAddAddress, setShowAddAddress] = useState(false);
-  const [addrTitle, setAddrTitle] = useState('');
-  const [addrGov, setAddrGov] = useState('الجيزة');
-  const [addrCity, setAddrCity] = useState('');
-  const [addrStreet, setAddrStreet] = useState('');
+  // Address form state
+  const [showAddrForm, setShowAddrForm] = useState(false);
+  const [editingAddrId, setEditingAddrId] = useState<number | null>(null);
+  const [addrLabel, setAddrLabel] = useState('');
+  const [addrName, setAddrName] = useState('');
+  const [addrPhone, setAddrPhone] = useState('');
+  const [addrGovId, setAddrGovId] = useState<number>(0);
+  const [addrLine, setAddrLine] = useState('');
   const [addrIsDefault, setAddrIsDefault] = useState(false);
+  const [addrSaving, setAddrSaving] = useState(false);
+  const [addrMsg, setAddrMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  // If not logged in
+  const [reorderBusyNum, setReorderBusyNum] = useState<string | null>(null);
+  const [reorderNotice, setReorderNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!addrGovId && governorates.length > 0) {
+      setAddrGovId(governorates[0].id);
+    }
+  }, [governorates, addrGovId]);
+
+  if (isHydrating && !user) {
+    return (
+      <div className="grid min-h-[80vh] place-items-center bg-cream pt-[68px] md:pt-[84px]">
+        <div className="flex items-center gap-3 rounded-2xl bg-white px-6 py-4 shadow-soft">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-baladi-red border-t-transparent" />
+          <span className="text-sm font-black text-ink">{t('جاري تحميل حسابك...', 'Loading your account...')}</span>
+        </div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated || !user) {
     return (
       <div className="min-h-[80vh] bg-cream pt-[68px] md:pt-[84px]">
@@ -110,16 +138,19 @@ export default function ProfilePage() {
           <h1 className="t-display text-3xl md:text-4xl">{t('حسابك الشخصي', 'Your Account')}</h1>
           <p className="mx-auto mt-3 max-w-md text-base font-bold text-ink/75">
             {t(
-              'قم بتسجيل الدخول للاطلاع على طلباتك السابقة، إدارة حيواناتك الأليفة، وتعديل بياناتك.',
-              'Sign in to view your order history, manage your pets, and edit your details.'
+              'سجل الدخول للاطلاع على طلباتك، إدارة عناوين التوصيل، المفضلة، والإشعارات.',
+              'Sign in to manage your orders, delivery addresses, favorites, and notifications.'
             )}
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <Link to="/login" className="btn btn-ink">
               {t('تسجيل الدخول', 'Sign In')}
             </Link>
-            <Link to="/register" className="btn btn-outline-light !text-ink !border-ink/30 hover:!bg-ink/5">
+            <Link to="/register" className="btn btn-outline-light !border-ink/30 !text-ink hover:!bg-ink/5">
               {t('إنشاء حساب جديد', 'Create Account')}
+            </Link>
+            <Link to="/track" className="btn btn-yellow">
+              {t('تتبع طلب كضيف', 'Track Order')}
             </Link>
           </div>
         </div>
@@ -127,31 +158,31 @@ export default function ProfilePage() {
     );
   }
 
-  const handleProfileSubmit = (e: FormEvent) => {
+  const handleProfileSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      setProfileMsg({ text: t('برجاء إدخال الاسم', 'Please enter your name'), type: 'error' });
+    setProfileMsg(null);
+    if (!name.trim() || !phone.trim()) {
+      setProfileMsg({ text: t('الاسم ورقم الهاتف مطلوبان', 'Name and phone are required'), type: 'error' });
       return;
     }
-    updateProfile({
-      name,
-      email,
-      phone,
-      governorate,
-      address,
-      avatar,
-      preferredSpecies,
-    });
-    setProfileMsg({ text: t('تم حفظ التعديلات بنجاح!', 'Profile updated successfully!'), type: 'success' });
-    setTimeout(() => setProfileMsg(null), 3000);
+    setProfileLoading(true);
+    const res = await updateProfile({ name: name.trim(), phone: phone.trim() });
+    setProfileLoading(false);
+
+    if (res.success) {
+      setProfileMsg({ text: t('تم حفظ التعديلات بنجاح!', 'Profile updated successfully!'), type: 'success' });
+      setTimeout(() => setProfileMsg(null), 3500);
+    } else {
+      setProfileMsg({ text: res.error || t('تعذر تحديث البيانات', 'Could not update profile'), type: 'error' });
+    }
   };
 
   const handlePasswordSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setPassMsg(null);
-    if (!newPassword || newPassword.length < 6) {
+    if (!newPassword || newPassword.length < 8) {
       setPassMsg({
-        text: t('كلمة المرور يجب أن لا تقل عن 6 أحرف', 'Password must be at least 6 characters'),
+        text: t('كلمة المرور يجب أن لا تقل عن 8 أحرف', 'Password must be at least 8 characters'),
         type: 'error',
       });
       return;
@@ -162,63 +193,130 @@ export default function ProfilePage() {
     }
 
     setPassLoading(true);
-    const res = await changePassword(oldPassword, newPassword);
+    const res = await updateProfile({
+      password: newPassword,
+      password_confirmation: confirmPassword,
+    });
     setPassLoading(false);
 
     if (res.success) {
       setPassMsg({
-        text: t('تم تغيير كلمة المرور بنجاح!', 'Password changed successfully!'),
+        text: t('تم تحديث كلمة المرور بنجاح!', 'Password updated successfully!'),
         type: 'success',
       });
-      setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setTimeout(() => setPassMsg(null), 4000);
     } else {
-      setPassMsg({ text: res.error || t('حدث خطأ', 'An error occurred'), type: 'error' });
+      setPassMsg({ text: res.error || t('تعذر تحديث كلمة المرور', 'Error updating password'), type: 'error' });
     }
   };
 
-  const handleAddPet = (e: FormEvent) => {
-    e.preventDefault();
-    if (!petName.trim()) return;
-    addPet({
-      name: petName,
-      species: petSpecies,
-      age: petAge || (petSpecies === 'cat' ? 'سنة واحدة' : 'سنتين'),
-      weight: petWeight || (petSpecies === 'cat' ? '4 كجم' : '15 كجم'),
-      food: petFood || (petSpecies === 'cat' ? 'طعام بلدى للقطط' : 'طعام بلدى للكلاب'),
-    });
-    setPetName('');
-    setPetAge('');
-    setPetWeight('');
-    setPetFood('');
-    setShowAddPet(false);
+  const openCreateAddress = () => {
+    setEditingAddrId(null);
+    setAddrLabel(t('المنزل', 'Home'));
+    setAddrName(user.name || '');
+    setAddrPhone(user.phone || '');
+    setAddrGovId(governorates[0]?.id ?? 0);
+    setAddrLine('');
+    setAddrIsDefault(addresses.length === 0);
+    setAddrMsg(null);
+    setShowAddrForm(true);
   };
 
-  const handleAddAddress = (e: FormEvent) => {
-    e.preventDefault();
-    if (!addrTitle.trim() || !addrStreet.trim()) return;
-    addAddress({
-      title: addrTitle,
-      governorate: addrGov,
-      city: addrCity,
-      street: addrStreet,
-      isDefault: addrIsDefault,
-    });
-    setAddrTitle('');
-    setAddrCity('');
-    setAddrStreet('');
-    setAddrIsDefault(false);
-    setShowAddAddress(false);
+  const openEditAddress = (addr: ApiAddress) => {
+    setEditingAddrId(addr.id);
+    setAddrLabel(addr.label);
+    setAddrName(addr.name);
+    setAddrPhone(addr.phone);
+    setAddrGovId(addr.governorate_id || governorates[0]?.id || 0);
+    setAddrLine(addr.line);
+    setAddrIsDefault(addr.is_default);
+    setAddrMsg(null);
+    setShowAddrForm(true);
   };
 
-  const handleReorder = (order: typeof orders[0]) => {
-    order.items.forEach((item) => {
-      const prod = PRODUCTS.find((p) => p.slug === item.slug) || PRODUCTS[0];
-      addCart(prod, item.qty);
-    });
-    navigate('/cart');
+  const handleAddressSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setAddrMsg(null);
+    if (!addrLabel.trim() || !addrName.trim() || !addrPhone.trim() || !addrLine.trim() || !addrGovId) {
+      setAddrMsg({ text: t('يرجى استكمال جميع حقول العنوان', 'Please fill in all address fields'), type: 'error' });
+      return;
+    }
+
+    setAddrSaving(true);
+    const res = editingAddrId
+      ? await updateAddress(editingAddrId, {
+          label: addrLabel.trim(),
+          name: addrName.trim(),
+          phone: addrPhone.trim(),
+          governorate_id: Number(addrGovId),
+          line: addrLine.trim(),
+        })
+      : await createAddress({
+          label: addrLabel.trim(),
+          name: addrName.trim(),
+          phone: addrPhone.trim(),
+          governorate_id: Number(addrGovId),
+          line: addrLine.trim(),
+          is_default: addrIsDefault,
+        });
+
+    if (res.success && editingAddrId && addrIsDefault) {
+      await setDefaultAddress(editingAddrId);
+    }
+
+    setAddrSaving(false);
+
+    if (res.success) {
+      setShowAddrForm(false);
+      setEditingAddrId(null);
+    } else {
+      setAddrMsg({ text: res.error || t('تعذر حفظ العنوان', 'Could not save address'), type: 'error' });
+    }
+  };
+
+  const handleReorder = async (order: ApiOrder) => {
+    setReorderBusyNum(order.order_number);
+    setReorderNotice(null);
+    let addedCount = 0;
+
+    for (const item of order.items) {
+      let match = catalogProducts.find(
+        (p) => p.name === item.name || p.name_ar === item.name || p.name_en === item.name
+      );
+      if (!match) {
+        try {
+          const searchRes = await catalogApi.listProducts({ q: item.name, per_page: 5 }, lang);
+          match = (searchRes.data || []).find(
+            (p) => p.name === item.name || p.name_ar === item.name || p.name_en === item.name
+          ) ?? searchRes.data?.[0];
+        } catch {
+          match = undefined;
+        }
+      }
+
+      if (match && match.in_stock) {
+        const ok = await addById(match.id, item.quantity, false);
+        if (ok) addedCount++;
+      }
+    }
+
+    setReorderBusyNum(null);
+    if (addedCount > 0) {
+      navigate('/cart');
+    } else {
+      setReorderNotice(
+        t('عذراً، منتجات هذا الطلب غير متوفرة حالياً في المخزون', 'Sorry, items from this order are currently unavailable')
+      );
+    }
+  };
+
+  const statusTone = (status: string) => {
+    const s = status.toLowerCase();
+    if (s.includes('deliver') || s.includes('complet')) return 'bg-emerald-50 text-baladi-green border-baladi-green/25';
+    if (s.includes('cancel')) return 'bg-red-50 text-baladi-red border-baladi-red/25';
+    return 'bg-amber-50 text-amber-800 border-amber-300';
   };
 
   return (
@@ -229,188 +327,116 @@ export default function ProfilePage() {
         <div className="u-container relative">
           <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-start">
-              <div className="relative">
-                <div className="grid h-20 w-20 place-items-center rounded-3xl border-2 border-baladi-yellow bg-ink/80 text-white shadow-lift">
-                  <SpeciesAvatar avatar={user.avatar} species={user.preferredSpecies} size={42} color="#FFFFFF" />
-                </div>
+              <div className="grid h-20 w-20 place-items-center rounded-3xl border-2 border-baladi-yellow bg-ink/80 text-white shadow-lift">
+                <BaladiDuoEmblem size={42} color="#FFFFFF" />
               </div>
-
               <div>
                 <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                   <h1 className="text-2xl font-black text-white md:text-3xl">{user.name}</h1>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-baladi-yellow px-2.5 py-0.5 text-xs font-black text-ink">
-                    {user.preferredSpecies === 'cats' ? (
-                      <>
-                        <BaladiCatEmblem size={14} color="#23254F" />
-                        <span>{t('محب القطط', 'Cat Lover')}</span>
-                      </>
-                    ) : user.preferredSpecies === 'dogs' ? (
-                      <>
-                        <BaladiDogEmblem size={14} color="#23254F" />
-                        <span>{t('محب الكلاب', 'Dog Lover')}</span>
-                      </>
-                    ) : (
-                      <>
-                        <BaladiDuoEmblem size={13} color="#23254F" />
-                        <span>{t('صديق كل الحيوانات', 'Friend of All')}</span>
-                      </>
-                    )}
+                  <span className="inline-flex items-center gap-1 rounded-full bg-baladi-yellow px-2.5 py-0.5 text-xs font-black text-ink">
+                    {t('عضو بلدى', 'Baladi Member')}
                   </span>
                 </div>
-                <div className="mt-1 flex flex-wrap items-center justify-center gap-4 text-xs font-bold text-cream/90 sm:justify-start">
-                  <span className="flex items-center gap-1.5">
-                    <Mail className="h-3.5 w-3.5 text-baladi-yellow" /> {user.email}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Phone className="h-3.5 w-3.5 text-baladi-yellow" /> {user.phone}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5 text-baladi-yellow" /> {user.governorate}
-                  </span>
-                </div>
+                <p className="mt-1 text-sm font-medium text-cream/80" dir="ltr">
+                  {user.email} · {user.phone}
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  logout();
-                  navigate('/');
-                }}
-                className="flex items-center gap-2 rounded-full border border-red-400/40 bg-red-500/10 px-4 py-2 text-xs font-black text-red-200 transition-colors hover:bg-red-500/20"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                {t('تسجيل الخروج', 'Sign Out')}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                void logout().then(() => navigate('/'));
+              }}
+              className="inline-flex items-center gap-2 rounded-full border border-cream/25 bg-cream/10 px-4 py-2 text-xs font-black text-white transition-colors hover:bg-baladi-red hover:border-baladi-red"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span>{t('تسجيل الخروج', 'Sign Out')}</span>
+            </button>
           </div>
         </div>
       </section>
 
-      {/* ── PROFILE DASHBOARD BODY ─────────────────────────────── */}
-      <div className="u-container py-8 md:py-12">
-        <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
-          {/* Navigation Sidebar */}
-          <aside className="h-fit rounded-[28px] border hairline bg-white p-3 shadow-soft">
-            <nav className="space-y-1">
-              {[
-                { id: 'profile', icon: UserIcon, label: t('البيانات الشخصية', 'Personal Info') },
-                { id: 'security', icon: Lock, label: t('كلمة المرور والأمان', 'Password & Security') },
-                { id: 'pets', icon: Heart, label: t('حيواناتي الأليفة', 'My Pets'), count: pets.length },
-                { id: 'orders', icon: Package, label: t('طلباتي', 'My Orders'), count: orders.length },
-                { id: 'addresses', icon: MapPin, label: t('عناوين التوصيل', 'Addresses'), count: addresses.length },
-              ].map((item) => {
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveTab(item.id as Tab)}
-                    className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm font-extrabold transition-all ${
-                      isActive
-                        ? 'bg-ink text-white shadow-sm'
-                        : 'text-ink/80 hover:bg-ink/5 hover:text-ink'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <item.icon className={`h-4 w-4 ${isActive ? 'text-baladi-yellow' : 'text-ink/60'}`} />
-                      <span>{item.label}</span>
-                    </div>
-                    {item.count !== undefined && (
-                      <span
-                        className={`grid h-5 min-w-[20px] place-items-center rounded-full px-1.5 text-[11px] font-black ${
-                          isActive ? 'bg-baladi-red text-white' : 'bg-ink/10 text-ink'
-                        }`}
-                      >
-                        {item.count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
-
-            <div className="mt-4 border-t hairline pt-4">
-              <Link
-                to="/cats"
-                className="flex items-center justify-between rounded-2xl bg-baladi-yellow/15 p-3 text-xs font-black text-ink transition-colors hover:bg-baladi-yellow/25"
-              >
-                <span>{t('تسوق للقطط والكلاب', 'Shop for pets')}</span>
-                <ChevronRight className="h-4 w-4 rtl:rotate-180" />
-              </Link>
+      {/* ── MAIN BODY: SIDEBAR + TAB CONTENT ──────────────────── */}
+      <div className="u-container py-10 md:py-14">
+        <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
+          {/* Sidebar Nav */}
+          <aside className="h-fit space-y-2 rounded-[26px] border hairline bg-white p-3 shadow-soft">
+            {[
+              { id: 'profile' as Tab, icon: UserIcon, label: t('البيانات الشخصية', 'Profile Info') },
+              { id: 'orders' as Tab, icon: Package, label: t('طلباتي', 'My Orders'), count: orders.length },
+              { id: 'addresses' as Tab, icon: MapPin, label: t('عناويني', 'Addresses'), count: addresses.length },
+              { id: 'favorites' as Tab, icon: Heart, label: t('المفضلة', 'Favorites'), count: favorites.length },
+              { id: 'notifications' as Tab, icon: Bell, label: t('الإشعارات', 'Notifications'), count: unreadNotifications },
+              { id: 'security' as Tab, icon: Lock, label: t('كلمة المرور والأمان', 'Security') },
+            ].map((item) => {
+              const active = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setActiveTab(item.id)}
+                  className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm font-black transition-colors ${
+                    active ? 'bg-ink text-white' : 'text-ink/80 hover:bg-cream hover:text-ink'
+                  }`}
+                >
+                  <span className="flex items-center gap-2.5">
+                    <item.icon className={`h-4 w-4 ${active ? 'text-baladi-yellow' : 'text-ink/60'}`} />
+                    <span>{item.label}</span>
+                  </span>
+                  {item.count !== undefined && item.count > 0 && (
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-black ${
+                        active ? 'bg-baladi-yellow text-ink' : 'bg-cream text-ink/80'
+                      }`}
+                    >
+                      {item.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+            <div className="border-t hairline pt-2">
+              <Mark tone="red" className="mx-auto my-2 h-6 opacity-60" />
             </div>
           </aside>
 
-          {/* Tab Content Panel */}
-          <main className="min-w-0">
-            {/* 1. PERSONAL INFO TAB */}
+          {/* Main Tab Area */}
+          <div className="space-y-6">
+            {/* ── TAB: PROFILE ───────────────────────────────────── */}
             {activeTab === 'profile' && (
-              <div className="rounded-[32px] border hairline bg-white p-6 shadow-soft md:p-8">
-                <div className="flex items-center justify-between border-b hairline pb-5">
-                  <div>
-                    <h2 className="text-xl font-black text-ink">{t('البيانات الشخصية', 'Personal Info')}</h2>
-                    <p className="mt-1 text-xs font-bold text-ink/75">
-                      {t('قم بتحديث اسمك وبيانات التواصل الخاصة بك.', 'Update your name and contact details.')}
-                    </p>
-                  </div>
-                  <DiamondBadge size={28} accent="#E84249" dot="#FBBB21" />
+              <div className="rounded-[28px] border hairline bg-white p-6 shadow-soft md:p-8">
+                <div className="flex items-center gap-2.5 border-b hairline pb-4">
+                  <Edit3 className="h-5 w-5 text-baladi-red" />
+                  <h2 className="text-xl font-black text-ink">{t('تعديل البيانات الشخصية', 'Edit Personal Info')}</h2>
                 </div>
 
                 {profileMsg && (
                   <div
-                    className={`mt-4 flex items-center gap-2 rounded-2xl p-3.5 text-xs font-bold ${
-                      profileMsg.type === 'success'
-                        ? 'bg-emerald-50 text-baladi-green'
-                        : 'bg-red-50 text-baladi-red'
+                    className={`mt-5 flex items-center gap-2.5 rounded-2xl p-3.5 text-xs font-bold ${
+                      profileMsg.type === 'success' ? 'bg-emerald-50 text-baladi-green' : 'bg-red-50 text-baladi-red'
                     }`}
                   >
-                    {profileMsg.type === 'success' ? (
-                      <CheckCircle2 className="h-4 w-4 shrink-0" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 shrink-0" />
-                    )}
+                    {profileMsg.type === 'success' ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
                     <span>{profileMsg.text}</span>
                   </div>
                 )}
 
-                <form onSubmit={handleProfileSubmit} className="mt-6 space-y-5">
-                  {/* Avatar Picker */}
-                  <div>
-                    <label className="block text-[12.5px] font-extrabold uppercase tracking-wider text-ink/80">
-                      {t('أيقونة الحساب / الصورة الرمزية', 'Account Avatar')}
-                    </label>
-                    <div className="mt-2.5 flex flex-wrap gap-2">
-                      {AVATARS.map((av) => (
-                        <button
-                          key={av}
-                          type="button"
-                          onClick={() => setAvatar(av)}
-                          className={`grid h-11 w-11 place-items-center rounded-2xl text-ink transition-all ${
-                            avatar === av
-                              ? 'scale-110 border-2 border-baladi-red bg-red-50 shadow-sm'
-                              : 'border hairline bg-cream/50 hover:bg-white'
-                          }`}
-                        >
-                          <SpeciesAvatar avatar={av} size={22} color="#23254F" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
+                <form onSubmit={handleProfileSubmit} className="mt-6 space-y-4">
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <label className="block text-[12.5px] font-extrabold uppercase tracking-wider text-ink/80">
+                      <label className="block text-xs font-black uppercase tracking-wider text-ink/75">
                         {t('الاسم بالكامل', 'Full Name')}
                       </label>
                       <input
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="mt-2 w-full rounded-2xl border hairline bg-cream/50 py-3 px-4 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
+                        className="mt-2 w-full rounded-2xl border hairline bg-cream/40 px-4 py-3 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none"
                       />
                     </div>
-
                     <div>
-                      <label className="block text-[12.5px] font-extrabold uppercase tracking-wider text-ink/80">
+                      <label className="block text-xs font-black uppercase tracking-wider text-ink/75">
                         {t('رقم الهاتف', 'Phone Number')}
                       </label>
                       <input
@@ -418,627 +444,232 @@ export default function ProfilePage() {
                         dir="ltr"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        className="mt-2 w-full rounded-2xl border hairline bg-cream/50 py-3 px-4 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
+                        className="mt-2 w-full rounded-2xl border hairline bg-cream/40 px-4 py-3 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none"
                       />
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="block text-[12.5px] font-extrabold uppercase tracking-wider text-ink/80">
-                        {t('البريد الإلكتروني', 'Email Address')}
-                      </label>
-                      <input
-                        type="email"
-                        dir="ltr"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="mt-2 w-full rounded-2xl border hairline bg-cream/50 py-3 px-4 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[12.5px] font-extrabold uppercase tracking-wider text-ink/80">
-                        {t('المحافظة', 'Governorate')}
-                      </label>
-                      <select
-                        value={governorate}
-                        onChange={(e) => setGovernorate(e.target.value)}
-                        className="mt-2 w-full rounded-2xl border hairline bg-cream/50 py-3 px-4 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
-                      >
-                        {GOVS.map((g) => (
-                          <option key={g.en} value={g.ar}>
-                            {lang === 'ar' ? g.ar : g.en}
-                          </option>
-                        ))}
-                      </select>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-[12.5px] font-extrabold uppercase tracking-wider text-ink/80">
-                      {t('العنوان الافتراضي للتوصيل', 'Default Delivery Address')}
+                    <label className="block text-xs font-black uppercase tracking-wider text-ink/75">
+                      {t('البريد الإلكتروني', 'Email Address')}
                     </label>
-                    <textarea
-                      rows={2}
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      placeholder={lang === 'ar' ? 'الشارع، المنطقة، رقم العقار والشقة...' : 'Street, district, building and flat...'}
-                      className="mt-2 w-full rounded-2xl border hairline bg-cream/50 p-3 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
+                    <input
+                      type="email"
+                      dir="ltr"
+                      disabled
+                      value={user.email}
+                      className="mt-2 w-full cursor-not-allowed rounded-2xl border hairline bg-ink/[0.04] px-4 py-3 text-sm font-bold text-ink/60"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-[12.5px] font-extrabold uppercase tracking-wider text-ink/80">
-                      {t('اهتمامك المفضل', 'Pet Preference')}
-                    </label>
-                    <div className="mt-2 flex max-w-sm gap-2">
-                      {[
-                        { id: 'cats', label: t('قطط', 'Cats'), Icon: BaladiCatEmblem },
-                        { id: 'dogs', label: t('كلاب', 'Dogs'), Icon: BaladiDogEmblem },
-                        { id: 'both', label: t('كلاهما', 'Both'), Icon: BaladiDuoEmblem },
-                      ].map((item) => {
-                        const active = preferredSpecies === item.id;
-                        const Icon = item.Icon;
-                        const activeCls =
-                          item.id === 'cats'
-                            ? 'bg-baladi-red text-white'
-                            : item.id === 'dogs'
-                            ? 'bg-baladi-green text-white'
-                            : 'bg-ink text-white';
-                        const iconColor = active
-                          ? '#FFFFFF'
-                          : item.id === 'cats'
-                          ? '#E84249'
-                          : item.id === 'dogs'
-                          ? '#1E996C'
-                          : 'currentColor';
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => setPreferredSpecies(item.id as 'cats' | 'dogs' | 'both')}
-                            className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-2xl py-2.5 text-xs font-black transition-colors ${
-                              active ? activeCls : 'border hairline bg-cream/50 text-ink/80 hover:bg-cream'
-                            }`}
-                          >
-                            <Icon size={item.id === 'both' ? 15 : 17} color={iconColor} />
-                            <span>{item.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
                   <div className="pt-2">
-                    <button type="submit" className="btn btn-ink">
-                      {t('حفظ التعديلات', 'Save Changes')}
+                    <button
+                      type="submit"
+                      disabled={profileLoading}
+                      className="btn btn-ink font-black disabled:opacity-60"
+                    >
+                      {profileLoading ? t('جاري الحفظ...', 'Saving...') : t('حفظ التعديلات', 'Save Changes')}
                     </button>
                   </div>
                 </form>
               </div>
             )}
 
-            {/* 2. PASSWORD & SECURITY TAB */}
-            {activeTab === 'security' && (
-              <div className="rounded-[32px] border hairline bg-white p-6 shadow-soft md:p-8">
-                <div className="flex items-center justify-between border-b hairline pb-5">
-                  <div>
-                    <h2 className="text-xl font-black text-ink">{t('كلمة المرور والأمان', 'Password & Security')}</h2>
-                    <p className="mt-1 text-xs font-bold text-ink/75">
-                      {t('قم بتعيين كلمة مرور قوية لحماية حسابك.', 'Set a strong password to protect your account.')}
-                    </p>
-                  </div>
-                  <ShieldCheck className="h-7 w-7 text-baladi-green" />
-                </div>
-
-                {passMsg && (
-                  <div
-                    className={`mt-4 flex items-center gap-2 rounded-2xl p-3.5 text-xs font-bold ${
-                      passMsg.type === 'success'
-                        ? 'bg-emerald-50 text-baladi-green'
-                        : 'bg-red-50 text-baladi-red'
-                    }`}
-                  >
-                    {passMsg.type === 'success' ? (
-                      <CheckCircle2 className="h-4 w-4 shrink-0" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 shrink-0" />
-                    )}
-                    <span>{passMsg.text}</span>
-                  </div>
-                )}
-
-                <form onSubmit={handlePasswordSubmit} className="mt-6 max-w-md space-y-4">
-                  <div>
-                    <label className="block text-[12.5px] font-extrabold uppercase tracking-wider text-ink/80">
-                      {t('كلمة المرور الحالية', 'Current Password')}
-                    </label>
-                    <input
-                      type="password"
-                      dir="ltr"
-                      value={oldPassword}
-                      onChange={(e) => setOldPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="mt-2 w-full rounded-2xl border hairline bg-cream/50 py-3 px-4 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[12.5px] font-extrabold uppercase tracking-wider text-ink/80">
-                      {t('كلمة المرور الجديدة', 'New Password')}
-                    </label>
-                    <input
-                      type="password"
-                      dir="ltr"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="mt-2 w-full rounded-2xl border hairline bg-cream/50 py-3 px-4 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
-                    />
-                    <p className="mt-1 text-[11px] font-bold text-ink/65">
-                      {t('يجب أن تحتوي على 6 أحرف على الأقل', 'Must be at least 6 characters')}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-[12.5px] font-extrabold uppercase tracking-wider text-ink/80">
-                      {t('تأكيد كلمة المرور الجديدة', 'Confirm New Password')}
-                    </label>
-                    <input
-                      type="password"
-                      dir="ltr"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="mt-2 w-full rounded-2xl border hairline bg-cream/50 py-3 px-4 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
-                    />
-                  </div>
-
-                  <div className="pt-2">
-                    <button type="submit" disabled={passLoading} className="btn btn-ink">
-                      {passLoading ? t('جارٍ الحفظ...', 'Saving...') : t('تحديث كلمة المرور', 'Update Password')}
-                    </button>
-                  </div>
-                </form>
-
-                <div className="mt-8 rounded-2xl bg-cream/60 p-4">
-                  <p className="text-xs font-black text-ink">{t('نصيحة أمان', 'Security Tip')}</p>
-                  <p className="mt-1 text-xs font-bold leading-relaxed text-ink/75">
-                    {t(
-                      'استخدم كلمة مرور فريدة ولا تشاركها مع أحد. فريق بلدى لن يطلب منك كلمة المرور أبداً.',
-                      'Use a unique password and never share it. The BALADI team will never ask for your password.'
-                    )}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* 3. MY PETS TAB */}
-            {activeTab === 'pets' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between rounded-[32px] border hairline bg-white p-6 shadow-soft">
-                  <div>
-                    <h2 className="text-xl font-black text-ink">{t('حيواناتي الأليفة', 'My Pets')}</h2>
-                    <p className="mt-1 text-xs font-bold text-ink/75">
-                      {t('سجّل قططك وكلابك لنقدم لك أنسب التوصيات الغذائية.', 'Register your pets for tailored nutritional recommendations.')}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowAddPet(!showAddPet)}
-                    className="btn btn-accent !py-2.5 !px-4 text-xs font-black shadow-sm"
-                  >
-                    <Plus className="h-4 w-4" />
-                    {t('إضافة أليف جديد', 'Add Pet')}
-                  </button>
-                </div>
-
-                {showAddPet && (
-                  <form
-                    onSubmit={handleAddPet}
-                    className="rounded-[32px] border-2 border-baladi-yellow/70 bg-white p-6 shadow-soft"
-                  >
-                    <h3 className="text-base font-black text-ink">{t('إضافة حيوان أليف جديد', 'Add New Pet')}</h3>
-                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                      <div>
-                        <label className="block text-xs font-extrabold uppercase text-ink/80">{t('اسم الأليف', 'Pet Name')} *</label>
-                        <input
-                          type="text"
-                          required
-                          value={petName}
-                          onChange={(e) => setPetName(e.target.value)}
-                          placeholder={lang === 'ar' ? 'مثال: فلفل، تايجر، لونا...' : 'e.g. Luna, Rocky...'}
-                          className="mt-1.5 w-full rounded-2xl border hairline bg-cream/50 py-2.5 px-3.5 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-extrabold uppercase text-ink/80">{t('النوع', 'Species')}</label>
-                        <div className="mt-1.5 grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setPetSpecies('cat')}
-                            className={`inline-flex items-center justify-center gap-1.5 rounded-2xl py-2.5 text-xs font-black transition-colors ${
-                              petSpecies === 'cat' ? 'bg-baladi-red text-white' : 'border hairline bg-cream/50 text-ink/80'
-                            }`}
-                          >
-                            <BaladiCatEmblem size={17} color={petSpecies === 'cat' ? '#FFFFFF' : '#E84249'} />
-                            <span>{t('قطة / قط', 'Cat')}</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setPetSpecies('dog')}
-                            className={`inline-flex items-center justify-center gap-1.5 rounded-2xl py-2.5 text-xs font-black transition-colors ${
-                              petSpecies === 'dog' ? 'bg-baladi-green text-white' : 'border hairline bg-cream/50 text-ink/80'
-                            }`}
-                          >
-                            <BaladiDogEmblem size={17} color={petSpecies === 'dog' ? '#FFFFFF' : '#1E996C'} />
-                            <span>{t('كلب', 'Dog')}</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-extrabold uppercase text-ink/80">{t('العمر التقريبي', 'Age')}</label>
-                        <input
-                          type="text"
-                          value={petAge}
-                          onChange={(e) => setPetAge(e.target.value)}
-                          placeholder={lang === 'ar' ? 'مثال: 8 شهور، سنتين...' : 'e.g. 8 months, 2 years...'}
-                          className="mt-1.5 w-full rounded-2xl border hairline bg-cream/50 py-2.5 px-3.5 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-extrabold uppercase text-ink/80">{t('الوزن (كجم)', 'Weight (kg)')}</label>
-                        <input
-                          type="text"
-                          value={petWeight}
-                          onChange={(e) => setPetWeight(e.target.value)}
-                          placeholder={lang === 'ar' ? 'مثال: 4 كجم' : 'e.g. 4 kg'}
-                          className="mt-1.5 w-full rounded-2xl border hairline bg-cream/50 py-2.5 px-3.5 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-4">
-                      <label className="block text-xs font-extrabold uppercase text-ink/80">{t('الأكل المفضل / ملاحظات التغذية', 'Favorite Food / Notes')}</label>
-                      <input
-                        type="text"
-                        value={petFood}
-                        onChange={(e) => setPetFood(e.target.value)}
-                        placeholder={lang === 'ar' ? 'مثال: طعام جاف بالدجاج والسمك' : 'e.g. Chicken & fish dry food'}
-                        className="mt-1.5 w-full rounded-2xl border hairline bg-cream/50 py-2.5 px-3.5 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="mt-5 flex gap-2">
-                      <button type="submit" className="btn btn-ink !py-2.5 !px-5 text-xs font-black">
-                        {t('حفظ الأليف', 'Save Pet')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowAddPet(false)}
-                        className="btn btn-ghost !py-2.5 !px-4 text-xs font-black"
-                      >
-                        {t('إلغاء', 'Cancel')}
-                      </button>
-                    </div>
-                  </form>
-                )}
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {pets.map((p) => {
-                    const isCat = p.species === 'cat';
-                    return (
-                      <div
-                        key={p.id}
-                        className={`relative flex flex-col justify-between overflow-hidden rounded-[28px] border bg-white p-5 shadow-soft transition-all hover:shadow-lift ${
-                          isCat ? 'border-baladi-red/30' : 'border-baladi-green/30'
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-3">
-                              <span
-                                className={`grid h-12 w-12 place-items-center rounded-2xl ${
-                                  isCat ? 'bg-baladi-red/10 text-baladi-red' : 'bg-baladi-green/10 text-baladi-green'
-                                }`}
-                              >
-                                {isCat ? (
-                                  <BaladiCatEmblem size={28} color="currentColor" />
-                                ) : (
-                                  <BaladiDogEmblem size={28} color="currentColor" />
-                                )}
-                              </span>
-                              <div>
-                                <h4 className="text-lg font-black text-ink">{p.name}</h4>
-                                <span
-                                  className={`rounded-full px-2 py-0.5 text-[11px] font-black ${
-                                    isCat
-                                      ? 'bg-baladi-red/10 text-baladi-red'
-                                      : 'bg-baladi-green/10 text-baladi-green'
-                                  }`}
-                                >
-                                  {isCat ? t('قط بلدي', 'Baladi Cat') : t('كلب بلدي', 'Baladi Dog')}
-                                </span>
-                              </div>
-                            </div>
-
-                            <button
-                              onClick={() => removePet(p.id)}
-                              className="rounded-full p-2 text-ink/40 transition-colors hover:bg-red-50 hover:text-baladi-red"
-                              aria-label={t('حذف', 'Remove')}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-
-                          <div className="mt-4 space-y-1.5 text-xs font-bold text-ink/80">
-                            <div className="flex justify-between border-b hairline py-1.5">
-                              <span className="text-ink/60">{t('العمر', 'Age')}</span>
-                              <span className="font-black text-ink">{p.age}</span>
-                            </div>
-                            <div className="flex justify-between border-b hairline py-1.5">
-                              <span className="text-ink/60">{t('الوزن', 'Weight')}</span>
-                              <span className="font-black text-ink">{p.weight}</span>
-                            </div>
-                            <div className="flex justify-between py-1.5">
-                              <span className="text-ink/60">{t('التغذية المفضلة', 'Favorite Food')}</span>
-                              <span className="max-w-[180px] truncate text-end font-black text-ink">{p.food}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mt-4 pt-3 border-t hairline">
-                          <Link
-                            to={isCat ? '/cats' : '/dogs'}
-                            className={`inline-flex items-center gap-1.5 text-xs font-black ${
-                              isCat ? 'text-baladi-red hover:underline' : 'text-baladi-green hover:underline'
-                            }`}
-                          >
-                            <span>{t('تسوق أكل مناسب لـ', 'Shop food for')} {p.name}</span>
-                            <span className="inline-block rtl:rotate-180">→</span>
-                          </Link>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* 4. ORDERS TAB */}
+            {/* ── TAB: ORDERS ────────────────────────────────────── */}
             {activeTab === 'orders' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between rounded-[32px] border hairline bg-white p-6 shadow-soft">
-                  <div>
-                    <h2 className="text-xl font-black text-ink">{t('سجل الطلبات', 'Order History')}</h2>
-                    <p className="mt-1 text-xs font-bold text-ink/75">
-                      {t('تابع حالة شحناتك وأعد طلب المنتجات بضغطة واحدة.', 'Track shipments and re-order with a single tap.')}
-                    </p>
+              <div className="space-y-4">
+                {reorderNotice && (
+                  <div className="rounded-2xl border border-baladi-red/30 bg-red-50 px-4 py-3 text-xs font-black text-baladi-red">
+                    {reorderNotice}
                   </div>
-                  <Package className="h-7 w-7 text-baladi-red" />
-                </div>
-
+                )}
                 {orders.length === 0 ? (
-                  <div className="rounded-[32px] border hairline bg-white p-12 text-center shadow-soft">
-                    <Package className="mx-auto h-12 w-12 text-ink/30" />
-                    <h3 className="mt-3 text-lg font-black text-ink">{t('لا توجد طلبات سابقة', 'No past orders')}</h3>
-                    <p className="mt-1 text-sm font-bold text-ink/70">
-                      {t('اطلب الآن وجبة بلدى المغذية لحيواناتك.', 'Order nutritious Baladi meals for your pets today.')}
-                    </p>
-                    <Link to="/cats" className="btn btn-ink mt-5">
-                      {t('ابدأ التسوق الآن', 'Start Shopping Now')}
+                  <div className="rounded-[28px] border hairline bg-white p-12 text-center shadow-soft">
+                    <Package className="mx-auto h-10 w-10 text-ink/35" />
+                    <p className="mt-3 font-black text-ink">{t('لا توجد طلبات سابقة بعد', 'No orders yet')}</p>
+                    <Link to="/cats" className="btn btn-ink mt-5 inline-flex">
+                      {t('تصفح المنتجات', 'Browse Products')}
                     </Link>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {orders.map((ord) => {
-                      const isDelivered = ord.status === 'delivered';
-                      return (
-                        <div
-                          key={ord.id}
-                          className="overflow-hidden rounded-[30px] border hairline bg-white shadow-soft transition-all hover:shadow-lift"
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-3 border-b hairline bg-cream/40 p-5 text-xs font-bold text-ink/80">
-                            <div className="flex flex-wrap items-center gap-3">
-                              <span className="rounded-xl bg-ink px-3 py-1 font-mono font-black text-white">
-                                {ord.orderNumber}
-                              </span>
-                              <span className="flex items-center gap-1.5 text-ink/70">
-                                <Clock className="h-3.5 w-3.5" />
-                                {ord.date}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                              <span
-                                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black ${
-                                  isDelivered
-                                    ? 'bg-emerald-100 text-baladi-green'
-                                    : 'bg-amber-100 text-amber-800'
-                                }`}
-                              >
-                                {isDelivered ? (
-                                  <>
-                                    <CheckCircle2 className="h-3.5 w-3.5" />
-                                    {t('تم التسليم', 'Delivered')}
-                                  </>
-                                ) : (
-                                  <>
-                                    <Truck className="h-3.5 w-3.5" />
-                                    {t('قيد التوصيل', 'In Transit')}
-                                  </>
-                                )}
-                              </span>
-                            </div>
+                  orders.map((ord) => (
+                    <div key={ord.order_number} className="rounded-[28px] border hairline bg-white p-6 shadow-soft">
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b hairline pb-4">
+                        <div>
+                          <div className="flex items-center gap-2.5">
+                            <span className="font-mono text-base font-black text-baladi-red">{ord.order_number}</span>
+                            <span className={`rounded-full border px-3 py-0.5 text-[11px] font-black ${statusTone(ord.status)}`}>
+                              {ord.status_label}
+                            </span>
                           </div>
-
-                          <div className="p-5">
-                            <div className="space-y-3">
-                              {ord.items.map((item) => (
-                                <div key={item.id} className="flex items-center gap-3.5">
-                                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-cream p-1">
-                                    <img src={item.image} alt="" className="max-h-14 w-auto object-contain" />
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <p className="truncate text-sm font-black text-ink">
-                                      {lang === 'ar' ? item.nameAr : item.nameEn}
-                                    </p>
-                                    <p className="text-xs font-bold text-ink/70">
-                                      {item.weight} · {item.qty} × {egp(item.price, lang)}
-                                    </p>
-                                  </div>
-                                  <span className="text-sm font-black text-ink">
-                                    {egp(item.price * item.qty, lang)}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-
-                            {/* Shipping Integration Details */}
-                            {ord.shippingTrackingNumber && (
-                              <div className="mt-4 flex flex-wrap items-center justify-between gap-2.5 rounded-2xl bg-emerald-50/70 p-3 text-xs border border-baladi-green/30">
-                                <div className="flex items-center gap-2">
-                                  <Truck className="h-4 w-4 text-baladi-green shrink-0" />
-                                  <span className="font-extrabold text-ink">{ord.shippingCarrier || 'Porter Express (بورتر)'}:</span>
-                                  <span className="font-mono font-black text-baladi-red">{ord.shippingTrackingNumber}</span>
-                                </div>
-                                <div className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-0.5 text-[10.5px] font-black text-baladi-green shadow-xs">
-                                  <ShieldCheck className="h-3 w-3" />
-                                  <span>{t('ربط شركة الشحن مفعل', 'Porter Shipping Synced')}</span>
-                                </div>
-                              </div>
-                            )}
-
-                            <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t hairline pt-4">
-                              <div className="text-xs font-bold text-ink/75">
-                                <span className="text-ink/60">{t('العنوان:', 'Address:')}</span>{' '}
-                                <span className="text-ink">{ord.address}</span>
-                              </div>
-
-                              <div className="flex items-center gap-4">
-                                <div className="text-end">
-                                  <p className="text-xs font-bold text-ink/60">{t('الإجمالي مع الشحن', 'Total with shipping')}</p>
-                                  <p className="text-base font-black text-ink">{egp(ord.total, lang)}</p>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => handleReorder(ord)}
-                                  className="inline-flex items-center gap-1.5 rounded-full bg-baladi-yellow px-4 py-2 text-xs font-black text-ink shadow-sm transition-transform hover:-translate-y-0.5"
-                                >
-                                  <RotateCcw className="h-3.5 w-3.5" />
-                                  {t('إعادة الطلب', 'Reorder')}
-                                </button>
-                              </div>
-                            </div>
-                          </div>
+                          <p className="mt-1 flex items-center gap-1.5 text-xs font-bold text-ink/65">
+                            <Clock className="h-3.5 w-3.5" />
+                            {new Date(ord.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}
+                            {' · '}
+                            {ord.payment_method === 'online' ? t('دفع إلكتروني', 'Online') : t('عند الاستلام', 'COD')}
+                          </p>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <div className="text-end">
+                          <span className="text-xs font-bold text-ink/60">{t('الإجمالي', 'Total')}</span>
+                          <p className="text-lg font-black text-ink">{egp(ord.total, lang)}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 space-y-2">
+                        {ord.items.map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-xs font-bold text-ink/85">
+                            <span>
+                              {item.name} × {item.quantity}
+                            </span>
+                            <span>{egp(item.total, lang)}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t hairline pt-4 text-xs font-bold text-ink/70">
+                        <span className="flex items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5 text-baladi-red" />
+                          {ord.customer_address}
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          <Link
+                            to={`/track?order=${encodeURIComponent(ord.order_number)}`}
+                            className="inline-flex items-center gap-1.5 rounded-full border hairline bg-cream px-3.5 py-2 text-xs font-black text-ink hover:bg-baladi-yellow/30"
+                          >
+                            <Truck className="h-3.5 w-3.5" />
+                            <span>{t('تتبع', 'Track')}</span>
+                          </Link>
+                          <button
+                            type="button"
+                            disabled={reorderBusyNum === ord.order_number}
+                            onClick={() => void handleReorder(ord)}
+                            className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-xs font-black text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            <span>
+                              {reorderBusyNum === ord.order_number
+                                ? t('جاري الإضافة...', 'Adding...')
+                                : t('إعادة الطلب', 'Reorder')}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
             )}
 
-            {/* 5. ADDRESSES TAB */}
+            {/* ── TAB: ADDRESSES ─────────────────────────────────── */}
             {activeTab === 'addresses' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between rounded-[32px] border hairline bg-white p-6 shadow-soft">
+              <div className="space-y-5">
+                <div className="flex items-center justify-between rounded-[28px] border hairline bg-white p-6 shadow-soft">
                   <div>
                     <h2 className="text-xl font-black text-ink">{t('عناوين التوصيل', 'Delivery Addresses')}</h2>
-                    <p className="mt-1 text-xs font-bold text-ink/75">
-                      {t('احفظ عناوينك لتسريع عملية الطلب مستقبلاً.', 'Save addresses to speed up future checkout.')}
+                    <p className="text-xs font-bold text-ink/70">
+                      {t('احفظ عناوينك لاستخدامها بنقرة واحدة عند إتمام الطلب', 'Save your addresses for 1-click checkout')}
                     </p>
                   </div>
                   <button
-                    onClick={() => setShowAddAddress(!showAddAddress)}
-                    className="btn btn-accent !py-2.5 !px-4 text-xs font-black shadow-sm"
+                    type="button"
+                    onClick={openCreateAddress}
+                    className="btn btn-ink inline-flex items-center gap-1.5 text-xs font-black"
                   >
                     <Plus className="h-4 w-4" />
-                    {t('إضافة عنوان', 'Add Address')}
+                    <span>{t('إضافة عنوان', 'Add Address')}</span>
                   </button>
                 </div>
 
-                {showAddAddress && (
-                  <form
-                    onSubmit={handleAddAddress}
-                    className="rounded-[32px] border-2 border-baladi-yellow/70 bg-white p-6 shadow-soft"
-                  >
-                    <h3 className="text-base font-black text-ink">{t('إضافة عنوان توصيل جديد', 'Add New Address')}</h3>
-                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                {showAddrForm && (
+                  <form onSubmit={handleAddressSubmit} className="space-y-4 rounded-[28px] border hairline bg-white p-6 shadow-soft">
+                    <h3 className="text-base font-black text-ink">
+                      {editingAddrId ? t('تعديل العنوان', 'Edit Address') : t('إضافة عنوان جديد', 'Add New Address')}
+                    </h3>
+
+                    {addrMsg && (
+                      <div className="rounded-xl bg-red-50 px-3.5 py-2.5 text-xs font-bold text-baladi-red">
+                        {addrMsg.text}
+                      </div>
+                    )}
+
+                    <div className="grid gap-4 sm:grid-cols-2">
                       <div>
-                        <label className="block text-xs font-extrabold uppercase text-ink/80">{t('اسم العنوان (مثال: المنزل، المكتب)', 'Title')} *</label>
+                        <label className="block text-xs font-black text-ink/75">{t('تسمية العنوان', 'Label')} *</label>
                         <input
                           type="text"
-                          required
-                          value={addrTitle}
-                          onChange={(e) => setAddrTitle(e.target.value)}
-                          placeholder={lang === 'ar' ? 'المنزل' : 'Home'}
-                          className="mt-1.5 w-full rounded-2xl border hairline bg-cream/50 py-2.5 px-3.5 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none"
+                          value={addrLabel}
+                          onChange={(e) => setAddrLabel(e.target.value)}
+                          placeholder={t('المنزل / العمل', 'Home / Office')}
+                          className="mt-1.5 w-full rounded-xl border hairline bg-cream/40 px-3.5 py-2.5 text-sm font-bold text-ink focus:outline-none"
                         />
                       </div>
-
                       <div>
-                        <label className="block text-xs font-extrabold uppercase text-ink/80">{t('المحافظة', 'Governorate')}</label>
+                        <label className="block text-xs font-black text-ink/75">{t('اسم المستلم', 'Recipient Name')} *</label>
+                        <input
+                          type="text"
+                          value={addrName}
+                          onChange={(e) => setAddrName(e.target.value)}
+                          className="mt-1.5 w-full rounded-xl border hairline bg-cream/40 px-3.5 py-2.5 text-sm font-bold text-ink focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-xs font-black text-ink/75">{t('رقم الهاتف', 'Phone')} *</label>
+                        <input
+                          type="tel"
+                          dir="ltr"
+                          value={addrPhone}
+                          onChange={(e) => setAddrPhone(e.target.value)}
+                          className="mt-1.5 w-full rounded-xl border hairline bg-cream/40 px-3.5 py-2.5 text-sm font-bold text-ink focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-black text-ink/75">{t('المحافظة', 'Governorate')} *</label>
                         <select
-                          value={addrGov}
-                          onChange={(e) => setAddrGov(e.target.value)}
-                          className="mt-1.5 w-full rounded-2xl border hairline bg-cream/50 py-2.5 px-3.5 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none"
+                          value={addrGovId}
+                          onChange={(e) => setAddrGovId(Number(e.target.value))}
+                          className="mt-1.5 w-full rounded-xl border hairline bg-cream/40 px-3.5 py-2.5 text-sm font-bold text-ink focus:outline-none"
                         >
-                          {GOVS.map((g) => (
-                            <option key={g.en} value={g.ar}>
-                              {lang === 'ar' ? g.ar : g.en}
+                          {governorates.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {lang === 'ar' ? g.name_ar || g.name : g.name_en || g.name}
                             </option>
                           ))}
                         </select>
                       </div>
-
-                      <div>
-                        <label className="block text-xs font-extrabold uppercase text-ink/80">{t('المدينة / الحي', 'City / District')}</label>
-                        <input
-                          type="text"
-                          value={addrCity}
-                          onChange={(e) => setAddrCity(e.target.value)}
-                          placeholder={lang === 'ar' ? 'الدقي / المعادي / سموحة...' : 'District or area'}
-                          className="mt-1.5 w-full rounded-2xl border hairline bg-cream/50 py-2.5 px-3.5 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-extrabold uppercase text-ink/80">{t('الشارع وتفاصيل العمارة', 'Street & Details')} *</label>
-                        <input
-                          type="text"
-                          required
-                          value={addrStreet}
-                          onChange={(e) => setAddrStreet(e.target.value)}
-                          placeholder={lang === 'ar' ? 'شارع الهرم، عمارة 14 الدور 3 شقة 6' : 'Street name, building and floor'}
-                          className="mt-1.5 w-full rounded-2xl border hairline bg-cream/50 py-2.5 px-3.5 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none"
-                        />
-                      </div>
                     </div>
 
-                    <div className="mt-4">
-                      <label className="flex cursor-pointer items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={addrIsDefault}
-                          onChange={(e) => setAddrIsDefault(e.target.checked)}
-                          className="h-4 w-4 rounded border-ink/30 text-baladi-red focus:ring-baladi-red"
-                        />
-                        <span className="text-xs font-bold text-ink/80">{t('تعيين كعنوان افتراضي للتوصيل', 'Set as default delivery address')}</span>
-                      </label>
+                    <div>
+                      <label className="block text-xs font-black text-ink/75">{t('العنوان التفصيلي', 'Address Line')} *</label>
+                      <input
+                        type="text"
+                        value={addrLine}
+                        onChange={(e) => setAddrLine(e.target.value)}
+                        placeholder={t('المدينة، الشارع، العمارة، الشقة', 'District, street, building, flat')}
+                        className="mt-1.5 w-full rounded-xl border hairline bg-cream/40 px-3.5 py-2.5 text-sm font-bold text-ink focus:outline-none"
+                      />
                     </div>
 
-                    <div className="mt-5 flex gap-2">
-                      <button type="submit" className="btn btn-ink !py-2.5 !px-5 text-xs font-black">
-                        {t('حفظ العنوان', 'Save Address')}
+                    <label className="flex cursor-pointer items-center gap-2 text-xs font-bold text-ink">
+                      <input
+                        type="checkbox"
+                        checked={addrIsDefault}
+                        onChange={(e) => setAddrIsDefault(e.target.checked)}
+                        className="h-4 w-4 rounded border-ink/30 text-baladi-red"
+                      />
+                      <span>{t('تعيين كعنوان افتراضي', 'Set as default address')}</span>
+                    </label>
+
+                    <div className="flex gap-2">
+                      <button type="submit" disabled={addrSaving} className="btn btn-ink text-xs font-black disabled:opacity-50">
+                        {addrSaving ? t('جاري الحفظ...', 'Saving...') : t('حفظ العنوان', 'Save Address')}
                       </button>
                       <button
                         type="button"
-                        onClick={() => setShowAddAddress(false)}
-                        className="btn btn-ghost !py-2.5 !px-4 text-xs font-black"
+                        onClick={() => setShowAddrForm(false)}
+                        className="rounded-full border hairline px-4 py-2 text-xs font-black text-ink/75 hover:text-ink"
                       >
                         {t('إلغاء', 'Cancel')}
                       </button>
@@ -1050,53 +681,247 @@ export default function ProfilePage() {
                   {addresses.map((addr) => (
                     <div
                       key={addr.id}
-                      className={`relative flex flex-col justify-between rounded-[28px] border bg-white p-5 shadow-soft ${
-                        addr.isDefault ? 'border-2 border-baladi-yellow bg-yellow-50/20' : 'hairline'
+                      className={`rounded-[26px] border bg-white p-5 shadow-soft ${
+                        addr.is_default ? 'border-baladi-green' : 'hairline'
                       }`}
                     >
-                      <div>
-                        <div className="flex items-center justify-between">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
                           <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-baladi-red" />
-                            <h4 className="text-base font-black text-ink">{addr.title}</h4>
+                            <span className="text-base font-black text-ink">{addr.label}</span>
+                            {addr.is_default && (
+                              <span className="rounded-full bg-baladi-green/10 px-2.5 py-0.5 text-[10px] font-black text-baladi-green">
+                                {t('افتراضي', 'Default')}
+                              </span>
+                            )}
                           </div>
-                          {addr.isDefault ? (
-                            <span className="rounded-full bg-baladi-yellow px-2.5 py-0.5 text-[10.5px] font-black text-ink">
-                              {t('الافتراضي', 'Default')}
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => setDefaultAddress(addr.id)}
-                              className="text-xs font-bold text-baladi-red hover:underline"
-                            >
-                              {t('جعله الافتراضي', 'Set default')}
-                            </button>
-                          )}
+                          <p className="mt-1 text-xs font-extrabold text-ink/80">{addr.name}</p>
                         </div>
-
-                        <p className="mt-3 text-xs font-bold leading-relaxed text-ink/80">
-                          {addr.street}
-                        </p>
-                        <p className="mt-1 text-xs font-black text-ink/65">
-                          {addr.city ? `${addr.city}، ` : ''}{addr.governorate}
-                        </p>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openEditAddress(addr)}
+                            className="rounded-full p-2 text-ink/55 hover:bg-cream hover:text-ink"
+                            aria-label={t('تعديل', 'Edit')}
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void deleteAddress(addr.id)}
+                            className="rounded-full p-2 text-ink/45 hover:bg-red-50 hover:text-baladi-red"
+                            aria-label={t('حذف', 'Delete')}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
-
-                      <div className="mt-4 flex items-center justify-end border-t hairline pt-3">
+                      <p className="mt-2 text-xs font-medium leading-relaxed text-ink/75">
+                        {addr.full_address || `${addr.governorate} · ${addr.line}`}
+                      </p>
+                      <p className="mt-2 flex items-center gap-1.5 text-xs font-bold text-ink/65" dir="ltr">
+                        <Phone className="h-3.5 w-3.5 text-baladi-red" />
+                        {addr.phone}
+                      </p>
+                      {!addr.is_default && (
                         <button
-                          onClick={() => removeAddress(addr.id)}
-                          className="rounded-full p-1.5 text-ink/40 transition-colors hover:bg-red-50 hover:text-baladi-red"
-                          aria-label={t('حذف', 'Remove')}
+                          type="button"
+                          onClick={() => void setDefaultAddress(addr.id)}
+                          className="mt-3 text-xs font-black text-baladi-red hover:underline"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          {t('تعيين كافتراضي', 'Set as default')}
                         </button>
-                      </div>
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
             )}
-          </main>
+
+            {/* ── TAB: FAVORITES ─────────────────────────────────── */}
+            {activeTab === 'favorites' && (
+              <div className="space-y-4">
+                {favorites.length === 0 ? (
+                  <div className="rounded-[28px] border hairline bg-white p-12 text-center shadow-soft">
+                    <Heart className="mx-auto h-10 w-10 text-ink/35" />
+                    <p className="mt-3 font-black text-ink">{t('قائمة المفضلة فارغة', 'No favorite products yet')}</p>
+                    <Link to="/cats" className="btn btn-ink mt-5 inline-flex">
+                      {t('استكشف المنتجات', 'Explore Products')}
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {favorites.map((prod) => (
+                      <div key={prod.id} className="flex gap-4 rounded-[26px] border hairline bg-white p-4 shadow-soft">
+                        <Link
+                          to={`/product/${prod.slug}`}
+                          className="grid h-24 w-24 shrink-0 place-items-center rounded-2xl bg-cream p-1.5"
+                        >
+                          <img
+                            src={resolveProductImage(prod.image, prod.species)}
+                            alt={getProductTitle(prod, lang)}
+                            className="max-h-20 w-auto object-contain"
+                            onError={(e) => {
+                              e.currentTarget.src = getProductFallbackImage(prod.species);
+                            }}
+                          />
+                        </Link>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] font-black text-ink/60">{getCategoryTitle(prod.category, lang)}</p>
+                          <Link
+                            to={`/product/${prod.slug}`}
+                            className="block truncate text-sm font-black text-ink hover:text-baladi-red"
+                          >
+                            {getProductTitle(prod, lang)}
+                          </Link>
+                          <p className="mt-1 text-sm font-black text-baladi-red">{egp(prod.price, lang)}</p>
+                          <div className="mt-3 flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={!prod.in_stock}
+                              onClick={() => void addCart(prod, 1, true)}
+                              className="inline-flex items-center gap-1 rounded-full bg-ink px-3 py-1.5 text-[11px] font-black text-white hover:opacity-90 disabled:opacity-40"
+                            >
+                              <ShoppingBag className="h-3 w-3" />
+                              <span>{t('أضف للسلة', 'Add')}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void removeFavorite(prod.id)}
+                              className="inline-flex items-center gap-1 rounded-full border hairline px-3 py-1.5 text-[11px] font-black text-ink/70 hover:text-baladi-red"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              <span>{t('إزالة', 'Remove')}</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── TAB: NOTIFICATIONS ─────────────────────────────── */}
+            {activeTab === 'notifications' && (
+              <div className="rounded-[28px] border hairline bg-white p-6 shadow-soft md:p-8">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b hairline pb-4">
+                  <div className="flex items-center gap-2.5">
+                    <Bell className="h-5 w-5 text-baladi-red" />
+                    <h2 className="text-xl font-black text-ink">{t('الإشعارات', 'Notifications')}</h2>
+                  </div>
+                  {unreadNotifications > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => void markAllNotificationsRead()}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-cream px-3.5 py-1.5 text-xs font-black text-ink hover:bg-baladi-yellow/35"
+                    >
+                      <Check className="h-3.5 w-3.5 text-baladi-green" />
+                      <span>{t('تحديد الكل كمقروء', 'Mark all read')}</span>
+                    </button>
+                  )}
+                </div>
+
+                {notifications.length === 0 ? (
+                  <p className="py-10 text-center text-sm font-bold text-ink/60">
+                    {t('لا توجد إشعارات حالياً', 'No notifications yet')}
+                  </p>
+                ) : (
+                  <ul className="mt-4 divide-y divide-ink/10">
+                    {notifications.map((n) => (
+                      <li
+                        key={n.id}
+                        className={`flex items-start justify-between gap-4 py-4 ${
+                          !n.read ? 'bg-baladi-yellow/[0.08] -mx-3 px-3 rounded-2xl' : ''
+                        }`}
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            {!n.read && <span className="h-2 w-2 rounded-full bg-baladi-red" />}
+                            <p className="text-sm font-extrabold text-ink">{n.message}</p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-ink/60">
+                            <span>{new Date(n.created_at).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US')}</span>
+                            {n.data?.order_number && (
+                              <Link
+                                to={`/track?order=${encodeURIComponent(n.data.order_number)}`}
+                                className="font-mono font-black text-baladi-red hover:underline"
+                              >
+                                {n.data.order_number}
+                              </Link>
+                            )}
+                          </div>
+                        </div>
+                        {!n.read && (
+                          <button
+                            type="button"
+                            onClick={() => void markNotificationRead(n.id)}
+                            className="shrink-0 rounded-full border hairline bg-white px-3 py-1 text-[11px] font-black text-ink hover:bg-cream"
+                          >
+                            {t('تمت القراءة', 'Mark read')}
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {/* ── TAB: SECURITY ──────────────────────────────────── */}
+            {activeTab === 'security' && (
+              <div className="rounded-[28px] border hairline bg-white p-6 shadow-soft md:p-8">
+                <div className="flex items-center gap-2.5 border-b hairline pb-4">
+                  <ShieldCheck className="h-5 w-5 text-baladi-green" />
+                  <h2 className="text-xl font-black text-ink">{t('تغيير كلمة المرور', 'Update Password')}</h2>
+                </div>
+
+                {passMsg && (
+                  <div
+                    className={`mt-5 flex items-center gap-2.5 rounded-2xl p-3.5 text-xs font-bold ${
+                      passMsg.type === 'success' ? 'bg-emerald-50 text-baladi-green' : 'bg-red-50 text-baladi-red'
+                    }`}
+                  >
+                    {passMsg.type === 'success' ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
+                    <span>{passMsg.text}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handlePasswordSubmit} className="mt-6 max-w-md space-y-4">
+                  <div>
+                    <label className="block text-xs font-black uppercase tracking-wider text-ink/75">
+                      {t('كلمة المرور الجديدة (8 أحرف على الأقل)', 'New Password (min 8 chars)')}
+                    </label>
+                    <input
+                      type="password"
+                      dir="ltr"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="mt-2 w-full rounded-2xl border hairline bg-cream/40 px-4 py-3 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black uppercase tracking-wider text-ink/75">
+                      {t('تأكيد كلمة المرور الجديدة', 'Confirm New Password')}
+                    </label>
+                    <input
+                      type="password"
+                      dir="ltr"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="mt-2 w-full rounded-2xl border hairline bg-cream/40 px-4 py-3 text-sm font-bold text-ink focus:border-baladi-red focus:bg-white focus:outline-none"
+                    />
+                  </div>
+
+                  <button type="submit" disabled={passLoading} className="btn btn-ink font-black disabled:opacity-60">
+                    {passLoading ? t('جاري التحديث...', 'Updating...') : t('تحديث كلمة المرور', 'Update Password')}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

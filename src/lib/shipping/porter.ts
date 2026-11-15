@@ -155,14 +155,14 @@ export function buildPorterShipmentPayload(
   config: ShippingConfig = PORTER_CONFIG
 ): CreateShipmentPayload {
   let totalWeight = 0;
-  const itemsPayload: ShippingItemPayload[] = order.items.map((item) => {
-    const weight = parseWeightToKg(item.weight, item.qty);
+  const itemsPayload: ShippingItemPayload[] = order.items.map((item, idx) => {
+    const weight = parseWeightToKg('', item.quantity);
     totalWeight += weight;
     return {
-      sku: item.slug || item.id,
-      name: item.nameAr,
-      nameEn: item.nameEn,
-      quantity: item.qty,
+      sku: `ITEM-${idx + 1}`,
+      name: item.name,
+      nameEn: item.name,
+      quantity: item.quantity,
       unitPrice: item.price,
       weightKg: Number(weight.toFixed(2)),
     };
@@ -172,7 +172,7 @@ export function buildPorterShipmentPayload(
   const codAmount = Math.max(0, Number(order.total.toFixed(2)));
 
   return {
-    orderNumber: order.orderNumber,
+    orderNumber: order.order_number,
     merchantId: config.merchantId,
     carrier: 'porter',
     paymentMethod: codAmount > 0 ? 'cod' : 'prepaid',
@@ -228,7 +228,7 @@ export async function dispatchOrderToPorter(
 
   const maskedKey =
     config.apiKey.length > 6 ? `***${config.apiKey.slice(-4)}` : '***';
-  console.groupCollapsed(`[Porter Shipping API] Dispatched Order: ${order.orderNumber}`);
+  console.groupCollapsed(`[Porter Shipping API] Dispatched Order: ${order.order_number}`);
   console.log('Adapter Config:', {
     carrierCode: config.carrierCode,
     apiUrl: config.apiUrl,
@@ -260,12 +260,12 @@ export async function dispatchOrderToPorter(
           liveData.tracking_number ||
           liveData.awb ||
           liveData.id ||
-          `PRTR-EG-${order.orderNumber.replace(/[^0-9]/g, '') || '2026'}`;
+          `PRTR-EG-${order.order_number.replace(/[^0-9]/g, '') || '2026'}`;
         const waybillNumber =
           liveData.waybillNumber ||
           liveData.waybill_number ||
           liveData.awb ||
-          `WB-${order.orderNumber}`;
+          `WB-${order.order_number}`;
         const trackingUrl =
           liveData.trackingUrl ||
           liveData.tracking_url ||
@@ -304,7 +304,7 @@ export async function dispatchOrderToPorter(
   // Realistic Sandbox / Ready-for-Integration Response
   // Generates unique authentic Porter Express waybill & tracking format
   const randomSuffix = Math.floor(100000 + Math.random() * 900000);
-  const trackingNumber = `PRTR-EG-${order.orderNumber.replace(/[^0-9]/g, '') || '2026'}-${randomSuffix}`;
+  const trackingNumber = `PRTR-EG-${order.order_number.replace(/[^0-9]/g, '') || '2026'}-${randomSuffix}`;
   const waybillNumber = `WB-BLD-${randomSuffix}`;
   const trackingUrl = buildPorterTrackingUrl(trackingNumber, config);
   const sandboxStatus: CourierStatus = 'pending_pickup';

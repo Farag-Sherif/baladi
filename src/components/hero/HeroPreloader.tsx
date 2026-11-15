@@ -16,7 +16,9 @@ export default function HeroPreloader({
     >
       <ZigZagBand color="#FBBB21" height={22} className="absolute top-10 w-full opacity-60" />
       <Mark tone="red" white className="h-14" />
-      <p className="mt-6 text-[11px] font-extrabold uppercase tracking-[0.4em] text-baladi-yellow">LOADING THE WORLD</p>
+      <p className="mt-6 text-[11px] font-extrabold uppercase tracking-[0.4em] text-baladi-yellow">
+        {t('جاري تحميل العالم', 'LOADING THE WORLD')}
+      </p>
       <div className="mt-7 h-[3px] w-[220px] overflow-hidden rounded-full bg-cream/15">
         <div className="h-full rounded-full bg-baladi-yellow transition-[width] duration-300" style={{ width: `${percent}%` }} />
       </div>

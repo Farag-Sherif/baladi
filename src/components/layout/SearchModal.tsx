@@ -1,7 +1,15 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, ArrowRight, Sparkles } from 'lucide-react';
-import { PRODUCTS } from '../../data/catalog';
+import { Search, X } from 'lucide-react';
+import {
+  catalogApi,
+  getCategoryTitle,
+  getProductFallbackImage,
+  getProductTitle,
+  resolveProductImage,
+  type ApiProduct,
+} from '../../lib/api';
+import { useStorefront } from '../../store/storefront';
 import { useLang } from '../../lib/lang';
 import { egp } from '../../lib/utils';
 
@@ -14,13 +22,18 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const { t, lang } = useLang();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
+  const [apiResults, setApiResults] = useState<ApiProduct[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const storefrontProducts = useStorefront((s) => s.products);
 
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
     } else {
       setQuery('');
+      setApiResults([]);
     }
   }, [isOpen]);
 
@@ -33,30 +46,38 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return PRODUCTS.slice(0, 4);
+  useEffect(() => {
+    if (!isOpen) return;
+    const trimmed = query.trim();
+    if (!trimmed) {
+      setApiResults([]);
+      setIsSearching(false);
+      return;
+    }
 
-    return PRODUCTS.filter((p) => {
-      const nameAr = p.name.ar.toLowerCase();
-      const nameEn = p.name.en.toLowerCase();
-      const flavorAr = p.flavor.ar.toLowerCase();
-      const flavorEn = p.flavor.en.toLowerCase();
-      const tagAr = p.tagline.ar.toLowerCase();
-      const tagEn = p.tagline.en.toLowerCase();
-      const speciesWord = p.species === 'cats' ? 'قطط قطة cat' : 'كلاب كلب dog';
+    let active = true;
+    setIsSearching(true);
+    const timer = window.setTimeout(() => {
+      catalogApi
+        .listProducts({ q: trimmed, per_page: 6 }, lang)
+        .then((res) => {
+          if (active) setApiResults(res.data || []);
+        })
+        .catch(() => {
+          if (active) setApiResults([]);
+        })
+        .finally(() => {
+          if (active) setIsSearching(false);
+        });
+    }, 220);
 
-      return (
-        nameAr.includes(q) ||
-        nameEn.includes(q) ||
-        flavorAr.includes(q) ||
-        flavorEn.includes(q) ||
-        tagAr.includes(q) ||
-        tagEn.includes(q) ||
-        speciesWord.includes(q)
-      );
-    }).slice(0, 6);
-  }, [query]);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [query, lang, isOpen]);
+
+  const filtered = query.trim() ? apiResults : storefrontProducts.slice(0, 4);
 
   const handleSelectProduct = (slug: string) => {
     onClose();
@@ -65,7 +86,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
   const handleFullSearch = () => {
     onClose();
-    navigate(`/search?q=${encodeURIComponent(query)}`);
+    navigate(query.trim() ? `/search?q=${encodeURIComponent(query.trim())}` : '/search');
   };
 
   if (!isOpen) return null;
@@ -81,7 +102,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
       >
         {/* Search Input Bar */}
         <div className="relative flex items-center border-b hairline px-6 py-4">
-          <Search className="h-6 w-6 text-baladi-red shrink-0" />
+          <Search className="h-6 w-6 shrink-0 text-baladi-red" />
           <input
             ref={inputRef}
             type="text"
@@ -99,6 +120,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
           />
           {query ? (
             <button
+              type="button"
               onClick={() => setQuery('')}
               className="rounded-full p-1 text-ink/40 hover:text-ink"
             >
@@ -106,6 +128,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
             </button>
           ) : (
             <button
+              type="button"
               onClick={onClose}
               className="rounded-full p-1 text-ink/40 hover:text-ink"
             >
@@ -117,9 +140,15 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
         {/* Quick suggestions tags */}
         <div className="flex flex-wrap items-center gap-2 border-b hairline bg-cream/40 px-6 py-3">
           <span className="text-[11px] font-black text-ink/65">{t('اقتراحات سريعة:', 'Quick tags:')}</span>
-          {['قطط', 'كلاب', 'دجاج', 'كيتن'].map((tag) => (
+          {[
+            t('قطط', 'cat'),
+            t('كلاب', 'dog'),
+            t('دجاج', 'chicken'),
+            t('تريتس', 'treats'),
+          ].map((tag) => (
             <button
               key={tag}
+              type="button"
               onClick={() => setQuery(tag)}
               className="rounded-full bg-white px-3 py-1 text-xs font-bold text-ink shadow-sm transition-colors hover:bg-baladi-yellow"
             >
@@ -131,35 +160,59 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
         {/* Results List */}
         <div className="max-h-[60vh] overflow-y-auto p-4">
           <div className="px-3 pb-2 text-[11px] font-black uppercase tracking-wider text-ink/50">
-            {query ? t('نتائج البحث', 'Search Results') : t('المنتجات المقترحة', 'Suggested Products')}
+            {query.trim()
+              ? isSearching
+                ? t('جاري البحث...', 'Searching...')
+                : t('نتائج البحث', 'Search Results')
+              : t('المنتجات المقترحة', 'Suggested Products')}
           </div>
 
-          {filtered.length > 0 ? (
+          {isSearching ? (
+            <div className="space-y-2 p-2">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex items-center gap-3.5 rounded-2xl bg-cream/60 p-2.5">
+                  <div className="h-14 w-14 animate-pulse rounded-xl bg-white" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3.5 w-2/3 animate-pulse rounded-full bg-ink/10" />
+                    <div className="h-3 w-1/3 animate-pulse rounded-full bg-ink/10" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filtered.length > 0 ? (
             <div className="space-y-2">
               {filtered.map((p) => {
-                const isCat = p.species === 'cats';
+                const isCat = p.species === 'cat';
                 return (
                   <button
                     key={p.id}
+                    type="button"
                     onClick={() => handleSelectProduct(p.slug)}
                     className="flex w-full items-center gap-3.5 rounded-2xl p-2.5 text-start transition-colors hover:bg-cream"
                   >
                     <div className="grid h-16 w-16 shrink-0 place-items-center rounded-xl bg-cream p-1">
-                      <img src={p.image} alt="" className="max-h-14 w-auto object-contain" />
+                      <img
+                        src={resolveProductImage(p.image, p.species)}
+                        alt={getProductTitle(p, lang)}
+                        className="max-h-14 w-auto object-contain"
+                        onError={(e) => {
+                          e.currentTarget.src = getProductFallbackImage(p.species);
+                        }}
+                      />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span
                           className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                            isCat ? 'bg-baladi-green/10 text-baladi-green' : 'bg-baladi-red/10 text-baladi-red'
+                            isCat ? 'bg-baladi-red/10 text-baladi-red' : 'bg-baladi-green/10 text-baladi-green'
                           }`}
                         >
                           {isCat ? t('قطط', 'Cat') : t('كلاب', 'Dog')}
                         </span>
-                        <p className="truncate text-sm font-black text-ink">{p.name[lang]}</p>
+                        <p className="truncate text-sm font-black text-ink">{getProductTitle(p, lang)}</p>
                       </div>
                       <p className="mt-0.5 text-xs font-bold text-ink/70">
-                        {p.flavor[lang]} · {p.weight}
+                        {getCategoryTitle(p.category, lang)} · {p.in_stock ? t('متوفر', 'In stock') : t('غير متوفر', 'Out of stock')}
                       </p>
                     </div>
                     <div className="text-end">
@@ -181,9 +234,10 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
         {/* Modal Footer */}
         <div className="flex items-center justify-between border-t hairline bg-cream/30 px-6 py-3">
           <span className="text-xs font-bold text-ink/60">
-            {t('اضغط Enter لعرض صفحة البحث الشاملة', 'Press Enter for full search page')}
+            {t('اضغط زر الإدخال لعرض صفحة البحث الشاملة', 'Press Enter for full search page')}
           </span>
           <button
+            type="button"
             onClick={handleFullSearch}
             className="inline-flex items-center gap-1.5 text-xs font-black text-baladi-red hover:underline"
           >

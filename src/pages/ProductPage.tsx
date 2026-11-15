@@ -1,10 +1,20 @@
-import { Link, useLocation, useParams } from 'react-router-dom';
-import { ChevronRight, Minus, Plus, ShieldCheck, Star, Truck, Leaf, Timer, X } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { getProduct, related, SPECIES, ALLERGEN_NOTE } from '../data/catalog';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { ChevronRight, Heart, Leaf, Minus, ShieldCheck, Timer, Truck, Plus, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { SPECIES } from '../data/catalog';
+import {
+  getCategoryTitle,
+  getProductFallbackImage,
+  getProductTitle,
+  resolveProductImage,
+  speciesToRoute,
+  type ApiProduct,
+} from '../lib/api';
 import { useLang } from '../lib/lang';
 import { egp } from '../lib/utils';
 import { ADD_GRACE_SECONDS, useCart } from '../store/cart';
+import { useStorefront } from '../store/storefront';
+import { useAuth } from '../store/auth';
 import ProductCard from '../components/sections/ProductCard';
 import Reveal from '../components/ui/Reveal';
 import Tilt3D from '../components/ui/Tilt3D';
@@ -14,18 +24,54 @@ import { GhostAnimal } from '../components/brand/Ornaments2';
 export default function ProductPage() {
   const { slug = '' } = useParams();
   const { pathname } = useLocation();
-  const product = getProduct(slug);
+  const navigate = useNavigate();
   const { t, lang } = useLang();
+
+  const products = useStorefront((s) => s.products);
+  const productDetails = useStorefront((s) => s.productDetails);
+  const fetchProductBySlug = useStorefront((s) => s.fetchProductBySlug);
+  const settings = useStorefront((s) => s.settings);
+  const isLoadingCatalog = useStorefront((s) => s.isLoadingCatalog);
+
   const pendingAdd = useCart((s) => s.pendingAdd);
   const startPendingAdd = useCart((s) => s.startPendingAdd);
   const updatePendingQty = useCart((s) => s.updatePendingQty);
   const cancelPendingAdd = useCart((s) => s.cancelPendingAdd);
   const commitPendingAdd = useCart((s) => s.commitPendingAdd);
+  const cartError = useCart((s) => s.error);
+  const clearCartError = useCart((s) => s.clearError);
+
+  const favorites = useAuth((s) => s.favorites);
+  const toggleFavorite = useAuth((s) => s.toggleFavorite);
+
+  const [fetchedProduct, setFetchedProduct] = useState<ApiProduct | null>(null);
+  const [isFetchingDetail, setIsFetchingDetail] = useState(false);
+  const [favBusy, setFavBusy] = useState(false);
   const [qty, setQty] = useState(1);
+
+  const product =
+    (fetchedProduct && fetchedProduct.slug === slug ? fetchedProduct : null) ||
+    productDetails[slug] ||
+    products.find((p) => p.slug === slug) ||
+    null;
 
   useEffect(() => {
     setQty(1);
-  }, [slug]);
+    clearCartError();
+    if (!slug) return;
+    let active = true;
+    setIsFetchingDetail(true);
+    fetchProductBySlug(slug, lang)
+      .then((item) => {
+        if (active && item) setFetchedProduct(item);
+      })
+      .finally(() => {
+        if (active) setIsFetchingDetail(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [slug, lang, fetchProductBySlug, clearCartError]);
 
   const isPendingThisProduct = Boolean(product && pendingAdd?.product.id === product.id);
   const activeQty = isPendingThisProduct && pendingAdd ? pendingAdd.qty : qty;
@@ -37,13 +83,32 @@ export default function ProductPage() {
   );
 
   const handleQtyChange = (next: number) => {
-    const clamped = Math.max(1, next);
+    clearCartError();
+    const maxAllowed = product && product.stock_quantity > 0 ? product.stock_quantity : 99;
+    const clamped = Math.max(1, Math.min(next, maxAllowed));
     if (isPendingThisProduct) {
       updatePendingQty(clamped);
     } else {
       setQty(clamped);
     }
   };
+
+  if (!product && (isFetchingDetail || isLoadingCatalog)) {
+    return (
+      <div className="pt-[68px] md:pt-[84px]">
+        <div className="u-container grid gap-12 py-12 md:py-20 lg:grid-cols-2">
+          <div className="h-[420px] animate-pulse rounded-[34px] bg-ink/[0.06]" />
+          <div className="space-y-4 py-4">
+            <div className="h-4 w-32 animate-pulse rounded-full bg-ink/[0.08]" />
+            <div className="h-10 w-3/4 animate-pulse rounded-2xl bg-ink/[0.08]" />
+            <div className="h-4 w-1/2 animate-pulse rounded-full bg-ink/[0.08]" />
+            <div className="h-24 w-full animate-pulse rounded-2xl bg-ink/[0.05]" />
+            <div className="h-12 w-full animate-pulse rounded-full bg-ink/[0.08]" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -57,89 +122,187 @@ export default function ProductPage() {
     );
   }
 
-  const s = SPECIES[product.species];
-  const isCat = product.species === 'cats';
+  const routeSpecies = speciesToRoute(product.species);
+  const s = SPECIES[routeSpecies];
+  const isCat = product.species === 'cat';
   const accent = isCat ? 'text-baladi-red' : 'text-baladi-green';
   const accentBg = isCat ? 'bg-baladi-red' : 'bg-baladi-green';
-  const rel = related(product);
+  const isFav = favorites.some((f) => f.id === product.id);
+  const title = getProductTitle(product, lang);
+  const categoryTitle = getCategoryTitle(product.category, lang);
+  const imageSrc = resolveProductImage(product.image, product.species);
+  const rel = products.filter((p) => p.species === product.species && p.slug !== product.slug).slice(0, 3);
+
+  const handleToggleFavorite = async () => {
+    if (favBusy) return;
+    setFavBusy(true);
+    const res = await toggleFavorite(product);
+    setFavBusy(false);
+    if (res.requiresAuth) {
+      navigate('/login');
+    }
+  };
 
   return (
     <div className={`${isCat ? 'theme-cat' : 'theme-dog'} pt-[68px] md:pt-[84px]`}>
       {/* breadcrumb */}
       <div className="border-b hairline bg-cream">
-        <div className="u-container flex items-center gap-2 py-4 text-[11.5px] font-extrabold uppercase tracking-[0.14em] text-ink/75">
+        <div className="u-container flex flex-wrap items-center gap-2 py-4 text-[11.5px] font-extrabold uppercase tracking-[0.14em] text-ink/75">
           <Link to="/" className="hover:text-ink">{t('الرئيسية', 'Home')}</Link>
           <ChevronRight className="h-3 w-3 rtl:rotate-180" />
-          <Link to={`/${product.species}`} className="hover:text-ink">{s.name[lang]}</Link>
+          <Link to={`/${routeSpecies}`} className="hover:text-ink">{s.name[lang]}</Link>
+          {product.category?.slug && (
+            <>
+              <ChevronRight className="h-3 w-3 rtl:rotate-180" />
+              <Link to={`/${routeSpecies}/${product.category.slug}`} className="hover:text-ink">{categoryTitle}</Link>
+            </>
+          )}
           <ChevronRight className="h-3 w-3 rtl:rotate-180" />
-          <span className="text-ink font-black">{product.name[lang]}</span>
+          <span className="font-black text-ink">{title}</span>
         </div>
       </div>
 
       {/* ── HERO: product portrait over a faded product backdrop ── */}
       <section className="relative overflow-hidden bg-cream">
-        {/* blurred product photo as the page backdrop, low opacity */}
         <div className="pointer-events-none absolute inset-0 opacity-[0.10]">
-          <img src={product.image} alt="" aria-hidden="true" className="absolute -end-[8%] top-0 h-full w-auto scale-125 object-contain blur-[3px]" />
+          <img
+            src={imageSrc}
+            alt=""
+            aria-hidden="true"
+            className="absolute -end-[8%] top-0 h-full w-auto scale-125 object-contain blur-[3px]"
+            onError={(e) => {
+              e.currentTarget.src = getProductFallbackImage(product.species);
+            }}
+          />
         </div>
         <div className={`pointer-events-none absolute inset-0 ${isCat ? 'bg-baladi-red/5' : 'bg-baladi-green/5'}`} />
-        <GhostAnimal species={product.species} src={s.silhouette} color={isCat ? '#E84249' : '#1E996C'} className="-bottom-10 -start-16 h-[85%] w-auto" opacity={0.11} />
+        <GhostAnimal species={routeSpecies} src={s.silhouette} color={isCat ? '#E84249' : '#1E996C'} className="-bottom-10 -start-16 h-[85%] w-auto" opacity={0.11} />
 
         <div className="u-container relative grid gap-12 py-10 md:py-16 lg:grid-cols-2">
           {/* stage */}
           <div className="relative">
             <div className={`relative overflow-hidden rounded-[34px] ${isCat ? 'bg-gradient-to-br from-[#FCE3E4] to-cream' : 'bg-gradient-to-br from-[#E3F2EA] to-cream'} p-8`}>
               <div className="absolute inset-x-0 top-0"><ZigZagBand height={13} weight={1.6} color={isCat ? '#E84249' : '#1E996C'} className="opacity-40" /></div>
+              {product.discount_percent ? (
+                <span className="pill-solid absolute start-6 top-6 z-10 bg-baladi-yellow text-ink">
+                  -{product.discount_percent}%
+                </span>
+              ) : null}
               <Tilt3D strength={13}>
                 <div className="relative flex h-[340px] w-full items-center justify-center p-2 md:h-[460px]">
-                  <img src={product.image} alt={product.name[lang]} className="h-full w-full max-h-full max-w-full object-contain drop-shadow-[0_40px_60px_rgba(35,37,79,0.32)]" />
+                  <img
+                    src={imageSrc}
+                    alt={title}
+                    className="h-full w-full max-h-full max-w-full object-contain drop-shadow-[0_40px_60px_rgba(35,37,79,0.32)]"
+                    onError={(e) => {
+                      e.currentTarget.src = getProductFallbackImage(product.species);
+                    }}
+                  />
                 </div>
               </Tilt3D>
               <div className="mt-4 flex items-center justify-between">
-                <span className={`t-eyebrow ${accent}`}>{product.flavor[lang]} · {product.weight}</span>
+                <span className={`t-eyebrow ${accent}`}>{categoryTitle}</span>
                 <DiamondBadge size={28} accent={isCat ? '#E84249' : '#1E996C'} dot="#FBBB21" />
               </div>
             </div>
 
             <div className="mt-3 grid grid-cols-3 gap-3">
-              {product.features.map((f, i) => (
-                <div key={i} className="rounded-2xl border hairline bg-white p-3">
-                  <p className="text-[11.5px] font-extrabold leading-snug text-ink">{f[lang]}</p>
-                </div>
-              ))}
+              <div className="rounded-2xl border hairline bg-white p-3">
+                <p className="text-[10px] font-black uppercase tracking-wider text-ink/55">{t('رمز المنتج', 'SKU')}</p>
+                <p className="mt-0.5 text-[12px] font-extrabold text-ink">{product.sku}</p>
+              </div>
+              <div className="rounded-2xl border hairline bg-white p-3">
+                <p className="text-[10px] font-black uppercase tracking-wider text-ink/55">{t('التصنيف', 'Category')}</p>
+                <p className="mt-0.5 truncate text-[12px] font-extrabold text-ink">{categoryTitle}</p>
+              </div>
+              <div className="rounded-2xl border hairline bg-white p-3">
+                <p className="text-[10px] font-black uppercase tracking-wider text-ink/55">{t('المخزون', 'Stock')}</p>
+                <p className={`mt-0.5 text-[12px] font-extrabold ${product.in_stock ? 'text-baladi-green' : 'text-baladi-red'}`}>
+                  {product.in_stock ? `${product.stock_quantity} ${t('متاح', 'available')}` : t('نفد', 'Out of stock')}
+                </p>
+              </div>
             </div>
           </div>
 
           {/* buy box */}
           <div className="lg:py-4">
-            <div className="flex items-center gap-3">
-              <Mark tone={s.mark} className="h-8" />
-              <span className={`t-eyebrow ${accent}`}>{s.signature[lang]}</span>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Mark tone={s.mark} className="h-8" />
+                <span className={`t-eyebrow ${accent}`}>{s.signature[lang]}</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleFavorite}
+                disabled={favBusy}
+                aria-label={t('إضافة للمفضلة', 'Toggle favorite')}
+                className={`inline-flex items-center gap-1.5 rounded-full border hairline px-3.5 py-2 text-xs font-black transition-colors ${
+                  isFav ? 'bg-baladi-red text-white border-baladi-red' : 'bg-white text-ink hover:border-baladi-red hover:text-baladi-red'
+                }`}
+              >
+                <Heart className={`h-3.5 w-3.5 ${isFav ? 'fill-current' : ''}`} />
+                <span>{isFav ? t('فى المفضلة', 'Saved') : t('حفظ', 'Save')}</span>
+              </button>
             </div>
-            <h1 className="t-display mt-4 text-[clamp(1.9rem,4vw,3rem)] text-ink">{product.name[lang]}</h1>
-            <p className="mt-2 text-[15px] font-extrabold text-ink/80">{product.flavor[lang]} · {product.weight}</p>
 
-            <div className="mt-3 flex items-center gap-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star key={i} className={`h-3.5 w-3.5 ${i < Math.round(product.rating) ? 'fill-baladi-yellow text-baladi-yellow' : 'text-ink/20'}`} />
-              ))}
-              <span className="text-[12px] font-extrabold text-ink/75">{product.rating} · {product.reviews} {t('تقييم', 'reviews')}</span>
-            </div>
+            <h1 className="t-display mt-4 text-[clamp(1.9rem,4vw,3rem)] text-ink">{title}</h1>
+            <p className="mt-2 text-[14.5px] font-extrabold text-ink/80">
+              {categoryTitle} · {product.in_stock ? t(`متوفر (${product.stock_quantity})`, `In stock (${product.stock_quantity})`) : t('غير متوفر حالياً', 'Out of stock')}
+            </p>
 
-            <p className="mt-5 text-[14.5px] font-medium leading-relaxed text-ink/85">{product.description[lang]}</p>
+            {product.description && (
+              <p className="mt-5 text-[14.5px] font-medium leading-relaxed text-ink/85">{product.description}</p>
+            )}
 
             <div className="mt-6 flex items-end gap-3">
               <p className="text-[30px] font-black leading-none text-ink">{egp(product.price, lang)}</p>
-              {product.compareAt && <p className="pb-1 text-[14px] font-bold text-ink/55 line-through">{egp(product.compareAt, lang)}</p>}
+              {product.compare_at_price && (
+                <p className="pb-1 text-[14px] font-bold text-ink/55 line-through">{egp(product.compare_at_price, lang)}</p>
+              )}
+              {product.discount_percent ? (
+                <span className="mb-1 rounded-full bg-baladi-yellow px-2.5 py-0.5 text-[11px] font-black text-ink">
+                  {t(`وفر ${product.discount_percent}%`, `Save ${product.discount_percent}%`)}
+                </span>
+              ) : null}
             </div>
+
+            {cartError && (
+              <div className="mt-4 rounded-2xl border border-baladi-red/30 bg-baladi-red/10 px-4 py-3 text-xs font-extrabold text-baladi-red">
+                {cartError}
+              </div>
+            )}
 
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-3 rounded-full border hairline bg-white px-3 py-2">
-                <button type="button" onClick={() => handleQtyChange(activeQty - 1)} aria-label="minus"><Minus className="h-4 w-4" /></button>
+                <button
+                  type="button"
+                  onClick={() => handleQtyChange(activeQty - 1)}
+                  disabled={activeQty <= 1}
+                  aria-label={t('إنقاص الكمية', 'Decrease quantity')}
+                  className="disabled:opacity-35"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
                 <span className="w-6 text-center text-sm font-black text-ink">{activeQty}</span>
-                <button type="button" onClick={() => handleQtyChange(activeQty + 1)} aria-label="plus"><Plus className="h-4 w-4" /></button>
+                <button
+                  type="button"
+                  onClick={() => handleQtyChange(activeQty + 1)}
+                  disabled={!product.in_stock || activeQty >= product.stock_quantity}
+                  aria-label={t('زيادة الكمية', 'Increase quantity')}
+                  className="disabled:opacity-35"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
               </div>
-              {!isPendingThisProduct ? (
+              {!product.in_stock ? (
+                <button
+                  type="button"
+                  disabled
+                  className="btn flex-1 cursor-not-allowed bg-ink/15 text-ink/50"
+                >
+                  {t('نفد من المخزون', 'Out of stock')}
+                </button>
+              ) : !isPendingThisProduct ? (
                 <button
                   type="button"
                   onClick={() => startPendingAdd(product, activeQty, pathname)}
@@ -151,7 +314,7 @@ export default function ProductPage() {
                 <>
                   <button
                     type="button"
-                    onClick={() => commitPendingAdd(true)}
+                    onClick={() => void commitPendingAdd(true)}
                     className={`btn relative flex-1 overflow-hidden ${isCat ? 'btn-accent theme-cat' : 'btn-accent theme-dog'}`}
                   >
                     <span
@@ -160,7 +323,7 @@ export default function ProductPage() {
                       style={{ width: `${graceProgressPercent}%` }}
                     />
                     <span className="relative z-10 inline-flex items-center justify-center gap-2 tabular-nums">
-                      <Timer className="h-4 w-4 animate-spin shrink-0" style={{ animationDuration: '3s' }} />
+                      <Timer className="h-4 w-4 shrink-0 animate-spin" style={{ animationDuration: '3s' }} />
                       <span>
                         {t(
                           `جاري التأكيد · ${displayGraceSeconds} ث · ${egp(product.price * activeQty, lang)}`,
@@ -172,7 +335,7 @@ export default function ProductPage() {
                   <button
                     type="button"
                     onClick={cancelPendingAdd}
-                    className="inline-flex items-center gap-1.5 rounded-full border-2 border-ink/20 bg-white px-4 py-3 text-xs font-black text-ink hover:border-baladi-red hover:text-baladi-red transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded-full border-2 border-ink/20 bg-white px-4 py-3 text-xs font-black text-ink transition-colors hover:border-baladi-red hover:text-baladi-red"
                   >
                     <X className="h-4 w-4 shrink-0" />
                     <span>{t('إلغاء', 'Cancel')}</span>
@@ -193,8 +356,12 @@ export default function ProductPage() {
               {[
                 {
                   icon: <Truck className={`h-4 w-4 shrink-0 ${accent}`} strokeWidth={1.9} />,
-                  a: 'توصيل لكل المحافظات',
-                  b: 'Nationwide delivery',
+                  a: settings?.free_shipping_threshold
+                    ? `شحن مجاني فوق ${settings.free_shipping_threshold} ج.م`
+                    : 'توصيل لكل المحافظات',
+                  b: settings?.free_shipping_threshold
+                    ? `Free shipping over ${settings.free_shipping_threshold} EGP`
+                    : 'Nationwide delivery',
                 },
                 {
                   icon: <ShieldCheck className={`h-4 w-4 shrink-0 ${accent}`} strokeWidth={1.9} />,
@@ -225,47 +392,59 @@ export default function ProductPage() {
         </div>
       </section>
 
-      {/* ── FACTS ─────────────────────────────────────────────── */}
+      {/* ── DETAILS ────────────────────────────────────────────── */}
       <section className="bg-white py-14 md:py-20">
         <div className="u-container grid gap-10 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <p className={`t-eyebrow ${accent}`}>{t('التحليل الغذائى', 'ANALYTICAL COMPONENTS')}</p>
-            <h2 className="t-display mt-3 text-[clamp(1.5rem,3vw,2.2rem)] text-ink">{t('أرقام العبوة', 'Straight off the bag')}</h2>
+            <p className={`t-eyebrow ${accent}`}>{t('تفاصيل المنتج', 'PRODUCT DETAILS')}</p>
+            <h2 className="t-display mt-3 text-[clamp(1.5rem,3vw,2.2rem)] text-ink">{t('بيانات المنتج من المتجر', 'Product specifications')}</h2>
             <div className="mt-6 grid gap-x-8 gap-y-0 sm:grid-cols-2">
-              {product.analysis.map((row) => (
-                <div key={row.label.en} className="flex items-center justify-between border-b border-ink/8 py-3">
-                  <span className="text-[13.5px] font-extrabold text-ink/80">{row.label[lang]}</span>
+              {[
+                { label: t('كود المنتج', 'SKU'), value: product.sku },
+                { label: t('العالم', 'World'), value: s.name[lang] },
+                { label: t('القسم', 'Category'), value: categoryTitle },
+                { label: t('الحالة', 'Availability'), value: product.in_stock ? t(`متوفر (${product.stock_quantity})`, `In stock (${product.stock_quantity})`) : t('غير متوفر', 'Out of stock') },
+                { label: t('السعر', 'Price'), value: egp(product.price, lang) },
+                { label: t('الخصم', 'Discount'), value: product.discount_percent ? `${product.discount_percent}%` : t('لا يوجد', 'None') },
+              ].map((row) => (
+                <div key={row.label} className="flex items-center justify-between border-b border-ink/8 py-3">
+                  <span className="text-[13.5px] font-extrabold text-ink/80">{row.label}</span>
                   <span className={`text-[14px] font-black ${accent}`}>{row.value}</span>
                 </div>
               ))}
             </div>
 
-            <p className="t-eyebrow mt-10 text-ink/70">{t('المكونات', 'INGREDIENTS')}</p>
-            <p className="mt-3 text-[13.5px] font-medium leading-relaxed text-ink/85">{product.ingredients[lang]}</p>
-
-            <p className="t-eyebrow mt-8 text-ink/70">{t('الفيتامينات والمعادن المضافة', 'ADDED VITAMINS & MINERALS')}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {product.vitamins.map((v) => (
-                <span key={v} className={`rounded-full px-3 py-1.5 text-[11.5px] font-bold ${isCat ? 'bg-baladi-red/10 text-baladi-red' : 'bg-baladi-green/10 text-baladi-green'}`}>
-                  {v}
-                </span>
-              ))}
-            </div>
+            {product.description && (
+              <>
+                <p className="t-eyebrow mt-10 text-ink/70">{t('الوصف الكامل', 'FULL DESCRIPTION')}</p>
+                <p className="mt-3 text-[14px] font-medium leading-relaxed text-ink/85">{product.description}</p>
+              </>
+            )}
           </div>
 
           <aside className="space-y-4">
             <div className="rounded-[26px] bg-ink p-6 text-cream">
-              <p className="t-eyebrow text-baladi-yellow">{t('تخزين وتغذية', 'STORAGE & FEEDING')}</p>
-              <p className="mt-3 text-[13px] font-medium leading-relaxed text-cream/90">{ALLERGEN_NOTE[lang]}</p>
+              <p className="t-eyebrow text-baladi-yellow">{t('توصيل وشحن', 'SHIPPING INFO')}</p>
+              <p className="mt-3 text-[13px] font-medium leading-relaxed text-cream/90">
+                {settings?.free_shipping_threshold
+                  ? t(
+                      `الشحن الأساسي ${settings.shipping_flat} ج.م، ومجاني للطلبات فوق ${settings.free_shipping_threshold} ج.م حسب المحافظة.`,
+                      `Base shipping is ${settings.shipping_flat} EGP, and free for orders over ${settings.free_shipping_threshold} EGP depending on governorate.`
+                    )
+                  : t(
+                      'الشحن بيتم لكل محافظات مصر وتكلفة التوصيل بتتحسب حسب المحافظة عند إتمام الطلب.',
+                      'Delivery covers all Egyptian governorates with rates calculated at checkout.'
+                    )}
+              </p>
               <div className="mt-5 flex items-center gap-2">
                 <DiamondBadge size={26} accent="#FBBB21" />
                 <span className="text-[11px] font-bold text-cream/80">{t('مُصنَّع فى مصر', 'Made in Egypt')}</span>
               </div>
             </div>
             <div className={`rounded-[26px] p-6 ${isCat ? 'bg-baladi-red/10' : 'bg-baladi-green/10'}`}>
-              <p className={`t-eyebrow ${accent}`}>{s.latin}</p>
+              <p className={`t-eyebrow ${accent}`}>{s.eyebrow[lang]}</p>
               <p className="mt-2 text-[13px] font-medium leading-relaxed text-ink/85">{s.intro[lang]}</p>
-              <Link to={`/${product.species}`} className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-black uppercase tracking-[0.14em] text-ink/80 hover:text-ink">
+              <Link to={`/${routeSpecies}`} className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-black uppercase tracking-[0.14em] text-ink/80 hover:text-ink">
                 {t('كل منتجات', 'All')} {s.name[lang]} <span className="inline-block rtl:rotate-180">→</span>
               </Link>
             </div>
@@ -279,7 +458,7 @@ export default function ProductPage() {
           <div className="u-container">
             <p className={`t-eyebrow ${accent}`}>{t('ممكن يعجبك', 'YOU MAY ALSO LIKE')}</p>
             <h2 className="t-display mt-3 text-[clamp(1.5rem,3vw,2.2rem)]">{t('من نفس العالم', 'From the same world')}</h2>
-            <div className="mt-7 grid grid-cols-2 gap-4 md:gap-6 lg:grid-cols-3">
+            <div className="mt-7 grid grid-cols-1 gap-5 sm:grid-cols-2 md:gap-6 lg:grid-cols-3">
               {rel.map((p, i) => (
                 <Reveal key={p.id} delay={i * 0.06}><ProductCard product={p} /></Reveal>
               ))}

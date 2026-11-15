@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useLang } from '../../lib/lang';
 import { Thunder } from '../brand/Ornaments2';
-import { ZigZagBand, BaladiCatEmblem, BaladiDogEmblem, BaladiDuoEmblem } from '../brand/Ornaments';
+import { ZigZagBand, BaladiCatEmblem, BaladiDogEmblem, BaladiDuoEmblem, BaladiGridBackground, DiamondBadge } from '../brand/Ornaments';
 import { cn } from '../../lib/utils';
 import BaladiPouch3DViewer from './BaladiPouch3DViewer';
 
@@ -36,7 +36,7 @@ interface PackData {
   accentColor: string;
   glowColor: string;
   link: string;
-  specs: { labelAr: string; labelEn: string; value: string }[];
+  specs: { labelAr: string; labelEn: string; valueAr: string; valueEn: string }[];
   badges: {
     icon: typeof ShieldCheck;
     titleAr: string;
@@ -64,9 +64,9 @@ const PACKS: Record<WorldMode, PackData> = {
     glowColor: 'rgba(251, 187, 33, 0.45)',
     link: '/cats',
     specs: [
-      { labelAr: 'مكونات طبيعية', labelEn: 'Natural Recipe', value: '100%' },
-      { labelAr: 'صنع في مصر', labelEn: 'Made in Egypt', value: 'بفخر' },
-      { labelAr: 'مكسبات صناعية', labelEn: 'Artificial Additives', value: '0%' },
+      { labelAr: 'مكونات طبيعية', labelEn: 'Natural Recipe', valueAr: '١٠٠٪', valueEn: '100%' },
+      { labelAr: 'صنع في مصر', labelEn: 'Made in Egypt', valueAr: 'بفخر', valueEn: 'Proudly' },
+      { labelAr: 'مكسبات صناعية', labelEn: 'Artificial Additives', valueAr: '٠٪', valueEn: '0%' },
     ],
     badges: [
       {
@@ -122,9 +122,9 @@ const PACKS: Record<WorldMode, PackData> = {
     glowColor: 'rgba(232, 66, 73, 0.45)',
     link: '/cats',
     specs: [
-      { labelAr: 'البروتين الخام', labelEn: 'Crude Protein', value: '22%' },
-      { labelAr: 'الدهون الصحية', labelEn: 'Healthy Fats', value: '10%' },
-      { labelAr: 'أوميجا ٣ و ٦', labelEn: 'Omega 3 & 6', value: 'متوازن' },
+      { labelAr: 'البروتين الخام', labelEn: 'Crude Protein', valueAr: '٢٢٪', valueEn: '22%' },
+      { labelAr: 'الدهون الصحية', labelEn: 'Healthy Fats', valueAr: '١٠٪', valueEn: '10%' },
+      { labelAr: 'أوميجا ٣ و ٦', labelEn: 'Omega 3 & 6', valueAr: 'متوازن', valueEn: 'Balanced' },
     ],
     badges: [
       {
@@ -180,9 +180,9 @@ const PACKS: Record<WorldMode, PackData> = {
     glowColor: 'rgba(30, 153, 108, 0.45)',
     link: '/dogs',
     specs: [
-      { labelAr: 'البروتين الحيواني', labelEn: 'Animal Protein', value: '20%' },
-      { labelAr: 'كالسيوم وفوسفور', labelEn: 'Calcium & Phos', value: 'مثالي' },
-      { labelAr: 'ألياف للهضم', labelEn: 'Digestive Fibers', value: 'متوازن' },
+      { labelAr: 'البروتين الحيواني', labelEn: 'Animal Protein', valueAr: '٢٠٪', valueEn: '20%' },
+      { labelAr: 'كالسيوم وفوسفور', labelEn: 'Calcium & Phos', valueAr: 'مثالي', valueEn: 'Optimal' },
+      { labelAr: 'ألياف للهضم', labelEn: 'Digestive Fibers', valueAr: 'متوازن', valueEn: 'Balanced' },
     ],
     badges: [
       {
@@ -329,6 +329,8 @@ export default function Baladi3DHero() {
         className="pointer-events-none absolute inset-0 z-0"
       />
 
+      <BaladiGridBackground opacity={0.08} />
+
       {/* Background Ornaments */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 opacity-35">
         <Thunder color={activePack.accentColor} height={20} />
@@ -361,8 +363,10 @@ export default function Baladi3DHero() {
                     key={tab.key}
                     type="button"
                     onClick={() => setMode(tab.key)}
+                    aria-label={isRtl ? tab.labelAr : tab.labelEn}
+                    title={isRtl ? tab.labelAr : tab.labelEn}
                     className={cn(
-                      'relative rounded-full px-3.5 py-1.5 text-[12px] sm:text-[13px] font-black transition-all duration-300',
+                      'relative rounded-full px-2.5 sm:px-3.5 py-1.5 text-[12px] sm:text-[13px] font-black transition-all duration-300',
                       isActive ? 'text-white shadow-md' : 'text-cream/70 hover:text-white hover:bg-white/10'
                     )}
                   >
@@ -383,8 +387,8 @@ export default function Baladi3DHero() {
                         color: isActive ? (tab.key === 'both' ? '#23254F' : '#ffffff') : undefined,
                       }}
                     >
-                      <Icon size={tab.key === 'both' ? 16 : 18} color="currentColor" />
-                      <span>{isRtl ? tab.labelAr : tab.labelEn}</span>
+                      <Icon size={tab.key === 'both' ? 17 : 19} color="currentColor" />
+                      <span className="hidden sm:inline">{isRtl ? tab.labelAr : tab.labelEn}</span>
                     </span>
                   </button>
                 );
@@ -440,7 +444,9 @@ export default function Baladi3DHero() {
             >
               {activePack.specs.map((s, idx) => (
                 <div key={idx} className="text-center px-1">
-                  <div className="text-[18px] md:text-[22px] font-black text-white leading-tight">{s.value}</div>
+                  <div className="text-[18px] md:text-[22px] font-black text-white leading-tight">
+                    {isRtl ? s.valueAr : s.valueEn}
+                  </div>
                   <div className="mt-1 text-[11px] md:text-[12px] font-bold text-cream/70 leading-snug">
                     {isRtl ? s.labelAr : s.labelEn}
                   </div>

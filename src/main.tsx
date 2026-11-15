@@ -2,8 +2,13 @@ import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import './index.css';
-import { LangProvider } from './lib/lang';
+import { LangProvider, useLang } from './lib/lang';
 import Layout from './components/layout/Layout';
+
+function AppSuspenseFallback() {
+  const { t } = useLang();
+  return <div className="grid min-h-screen place-items-center bg-cream font-black text-ink">{t('بَلَدِي', 'BALADI')}</div>;
+}
 
 const Home = lazy(() => import('./pages/Home'));
 const World = lazy(() => import('./pages/World'));
@@ -15,6 +20,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const TrackOrderPage = lazy(() => import('./pages/TrackOrderPage'));
 const SearchPage = lazy(() => import('./pages/SearchPage'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
@@ -22,7 +28,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <LangProvider>
       <HashRouter>
-        <Suspense fallback={<div className="grid min-h-screen place-items-center bg-cream text-ink">BALADI</div>}>
+        <Suspense fallback={<AppSuspenseFallback />}>
           <Routes>
             <Route element={<Layout />}>
               <Route path="/" element={<Home />} />
@@ -39,6 +45,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/account" element={<ProfilePage />} />
+              <Route path="/track" element={<TrackOrderPage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="*" element={<NotFound />} />
             </Route>

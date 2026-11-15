@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   MapPin,
   User as UserIcon,
@@ -14,110 +14,162 @@ import {
   ArrowRight,
   ArrowLeft,
   ChevronRight,
-  Lock,
-  Clock,
   RotateCcw,
   Copy,
-  ExternalLink,
   AlertCircle,
   Timer,
   Check,
   X,
+  Tag,
+  CreditCard,
+  Banknote,
 } from 'lucide-react';
-import { useCart, cartTotal, cartCount } from '../store/cart';
-import { useAuth, type Order, type UserAddress } from '../store/auth';
+import { useCart, cartCount } from '../store/cart';
+import { useAuth } from '../store/auth';
+import { useStorefront } from '../store/storefront';
+import {
+  checkoutApi,
+  extractErrorMessage,
+  getProductFallbackImage,
+  resolveProductImage,
+  type ApiCouponValidation,
+  type ApiError,
+  type ApiOrder,
+  type CheckoutGuestPayload,
+  type CheckoutSavedAddressPayload,
+} from '../lib/api';
 import { useLang } from '../lib/lang';
 import { egp } from '../lib/utils';
-import { ZigZagBand, FolkloricStarBadge, GpfBadge, BaladiCatEmblem, BaladiDogEmblem } from '../components/brand/Ornaments';
-import { dispatchOrderToPorter, getEstimatedDeliveryDays, PORTER_CONFIG } from '../lib/shipping';
-
-export const EGYPT_GOVERNORATES: { ar: string; en: string; fee: number }[] = [
-  { ar: 'القاهرة', en: 'Cairo', fee: 50 },
-  { ar: 'الجيزة', en: 'Giza', fee: 50 },
-  { ar: 'الإسكندرية', en: 'Alexandria', fee: 65 },
-  { ar: 'القليوبية', en: 'Qalyubia', fee: 55 },
-  { ar: 'الشرقية', en: 'Sharqia', fee: 65 },
-  { ar: 'الدقهلية', en: 'Dakahlia', fee: 70 },
-  { ar: 'الغربية', en: 'Gharbia', fee: 70 },
-  { ar: 'المنوفية', en: 'Monufia', fee: 65 },
-  { ar: 'البحيرة', en: 'Beheira', fee: 75 },
-  { ar: 'كفر الشيخ', en: 'Kafr El Sheikh', fee: 75 },
-  { ar: 'دمياط', en: 'Damietta', fee: 70 },
-  { ar: 'بورسعيد', en: 'Port Said', fee: 70 },
-  { ar: 'الإسماعيلية', en: 'Ismailia', fee: 70 },
-  { ar: 'السويس', en: 'Suez', fee: 70 },
-  { ar: 'الفيوم', en: 'Fayoum', fee: 75 },
-  { ar: 'بني سويف', en: 'Beni Suef', fee: 80 },
-  { ar: 'المنيا', en: 'Minya', fee: 85 },
-  { ar: 'أسيوط', en: 'Assiut', fee: 85 },
-  { ar: 'سوهاج', en: 'Sohag', fee: 90 },
-  { ar: 'قنا', en: 'Qena', fee: 90 },
-  { ar: 'الأقصر', en: 'Luxor', fee: 95 },
-  { ar: 'أسوان', en: 'Aswan', fee: 100 },
-  { ar: 'البحر الأحمر', en: 'Red Sea', fee: 110 },
-  { ar: 'جنوب سيناء', en: 'South Sinai', fee: 110 },
-  { ar: 'مطروح', en: 'Matrouh', fee: 100 },
-];
+import { ZigZagBand, BaladiCatEmblem, BaladiDogEmblem } from '../components/brand/Ornaments';
+import { PORTER_CONFIG } from '../lib/shipping';
 
 const GRACE_PERIOD_SECONDS = 10;
 
-interface PendingOrderState {
-  order: Order;
-  addressDetails: {
-    fullName: string;
+interface PendingCheckoutSnapshot {
+  payload: CheckoutGuestPayload | CheckoutSavedAddressPayload;
+  preview: {
+    recipientName: string;
     phone: string;
-    email?: string;
-    city: string;
-    street: string;
-    governorate: string;
-    governorateCode?: string;
-    notes?: string;
+    addressSummary: string;
+    governorateName: string;
+    paymentMethod: 'cod' | 'online';
+    shippingFee: number;
+    discount: number;
+    total: number;
   };
 }
 
 export default function CheckoutPage() {
   const { t, lang } = useLang();
   const isRtl = lang === 'ar';
-  const navigate = useNavigate();
 
-  const { lines, clear } = useCart();
-  const { user, isAuthenticated, addresses, addOrder } = useAuth();
+  const items = useCart((s) => s.items);
+  const subtotal = useCart((s) => s.subtotal);
+  const fetchCart = useCart((s) => s.fetchCart);
+  const totalItems = cartCount(items);
 
-  const subtotal = cartTotal(lines);
-  const totalItems = cartCount(lines);
+  const governorates = useStorefront((s) => s.governorates);
+  const settings = useStorefront((s) => s.settings);
+  const catalogProducts = useStorefront((s) => s.products);
+
+  const { user, isAuthenticated, addresses, fetchOrders, fetchNotifications, fetchUnreadCount } = useAuth();
 
   // Form states
-  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [selectedAddressId, setSelectedAddressId] = useState<number | 'custom'>('custom');
+  const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [govIndex, setGovIndex] = useState(0);
-  const [city, setCity] = useState('');
+  const [governorateId, setGovernorateId] = useState<number>(0);
   const [address, setAddress] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
   const [notes, setNotes] = useState('');
 
+  // Coupon states
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<ApiCouponValidation | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
+  const [placedOrder, setPlacedOrder] = useState<ApiOrder | null>(null);
 
   // ── 10-SECOND CONFIRMATION GRACE PERIOD STATE ────────────────
   const [gracePeriodActive, setGracePeriodActive] = useState(false);
   const [graceSeconds, setGraceSeconds] = useState(GRACE_PERIOD_SECONDS);
-  const [pendingOrderData, setPendingOrderData] = useState<PendingOrderState | null>(null);
-  const [copiedTracking, setCopiedTracking] = useState(false);
+  const [pendingSnapshot, setPendingSnapshot] = useState<PendingCheckoutSnapshot | null>(null);
+  const [copiedOrderNum, setCopiedOrderNum] = useState(false);
   const [cancelNotice, setCancelNotice] = useState<string | null>(null);
 
-  // Refs prevent stale closures across countdown ticks, auto-confirm, and manual cancel
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cancelNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingOrderRef = useRef<PendingOrderState | null>(null);
+  const pendingOrderRef = useRef<PendingCheckoutSnapshot | null>(null);
   const isGraceActiveRef = useRef(false);
   const isFinalizingRef = useRef(false);
 
-  const shippingFee = lines.length > 0 ? EGYPT_GOVERNORATES[govIndex].fee : 0;
-  const grandTotal = subtotal + shippingFee;
+  // Set default governorate once loaded
+  useEffect(() => {
+    if (!governorateId && governorates.length > 0) {
+      setGovernorateId(governorates[0].id);
+    }
+  }, [governorates, governorateId]);
+
+  // Pre-fill authenticated customer contact details and default address
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+    setFullName((prev) => prev || user.name || '');
+    setPhone((prev) => prev || user.phone || '');
+    setEmail((prev) => prev || user.email || '');
+
+    if (addresses.length > 0) {
+      setSelectedAddressId((prev) => {
+        if (typeof prev === 'number' && addresses.some((a) => a.id === prev)) {
+          return prev;
+        }
+        const def = addresses.find((a) => a.is_default) ?? addresses[0];
+        return def.id;
+      });
+    }
+  }, [isAuthenticated, user, addresses]);
+
+  // Re-validate coupon if subtotal changes while applied
+  useEffect(() => {
+    if (!appliedCoupon || subtotal <= 0) return;
+    let active = true;
+    checkoutApi
+      .validateCoupon(appliedCoupon.code, subtotal, lang)
+      .then((res) => {
+        if (active) setAppliedCoupon(res.data);
+      })
+      .catch(() => {
+        if (active) {
+          setAppliedCoupon(null);
+          setCouponError(t('الكوبون لم يعد سارياً على المجموع الحالي', 'Coupon is no longer valid for this subtotal'));
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [subtotal, lang]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const activeSavedAddress =
+    isAuthenticated && typeof selectedAddressId === 'number'
+      ? addresses.find((a) => a.id === selectedAddressId) ?? null
+      : null;
+
+  const activeGov = activeSavedAddress
+    ? governorates.find((g) => g.id === activeSavedAddress.governorate_id) ?? governorates[0]
+    : governorates.find((g) => g.id === governorateId) ?? governorates[0];
+
+  const freeThreshold = settings?.free_shipping_threshold ?? 0;
+  const isFreeShipping = freeThreshold > 0 && subtotal >= freeThreshold;
+  const shippingFee =
+    items.length > 0 && activeGov ? (isFreeShipping ? 0 : activeGov.shipping_cost) : 0;
+  const discountAmount = appliedCoupon?.discount ?? 0;
+  const grandTotal = Math.max(0, subtotal - discountAmount + shippingFee);
+
   const displayGraceSeconds = Math.max(1, graceSeconds);
   const graceProgressPercent = Math.max(
     0,
@@ -131,117 +183,96 @@ export default function CheckoutPage() {
     }
   }, []);
 
-  // Pre-fill user data & saved address if logged in
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      const nameParts = user.name.trim().split(' ');
-      setFirstName(nameParts[0] || '');
-      setLastName(nameParts.slice(1).join(' ') || '');
-      setPhone(user.phone || '');
-      setEmail(user.email || '');
-
-      if (addresses.length > 0) {
-        const defaultAddr = addresses.find((a) => a.isDefault) || addresses[0];
-        if (defaultAddr) applyAddress(defaultAddr);
-      } else {
-        const idx = EGYPT_GOVERNORATES.findIndex(
-          (g) => g.ar === user.governorate || g.en.toLowerCase() === user.governorate.toLowerCase()
-        );
-        if (idx !== -1) setGovIndex(idx);
-        if (user.address) setAddress(user.address);
-      }
+  const handleApplyCoupon = async () => {
+    const code = couponInput.trim();
+    if (!code || couponLoading) return;
+    setCouponError(null);
+    setCouponLoading(true);
+    try {
+      const res = await checkoutApi.validateCoupon(code, subtotal, lang);
+      setAppliedCoupon(res.data);
+      setCouponInput(res.data.code);
+    } catch (err) {
+      setAppliedCoupon(null);
+      setCouponError(extractErrorMessage(err, t('كود الخصم غير صالح أو منتهي', 'Invalid or expired coupon code')));
+    } finally {
+      setCouponLoading(false);
     }
-  }, [isAuthenticated, user, addresses]);
-
-  // Apply saved address
-  const applyAddress = (addr: UserAddress) => {
-    setSelectedAddressId(addr.id);
-    const idx = EGYPT_GOVERNORATES.findIndex(
-      (g) => g.ar === addr.governorate || g.en.toLowerCase() === addr.governorate.toLowerCase()
-    );
-    if (idx !== -1) setGovIndex(idx);
-    setCity(addr.city);
-    const fullStreet = addr.street + (addr.building ? `, عمارة ${addr.building}` : '');
-    setAddress(fullStreet);
-
-    setErrors((prev) => {
-      const updated = { ...prev };
-      delete updated.governorate;
-      delete updated.city;
-      delete updated.address;
-      return updated;
-    });
   };
 
-  const handleSelectCustomAddress = () => {
-    setSelectedAddressId('custom');
-    setCity('');
-    setAddress('');
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponError(null);
+    setCouponInput('');
   };
 
   const validate = () => {
+    if (activeSavedAddress) {
+      setErrors({});
+      return true;
+    }
+
     const errs: Record<string, string> = {};
-    if (!firstName.trim()) {
-      errs.firstName = isRtl ? 'الاسم الأول مطلوب' : 'First name is required';
+    if (!fullName.trim()) {
+      errs.fullName = isRtl ? 'الاسم بالكامل مطلوب' : 'Full name is required';
     }
     if (!phone.trim()) {
       errs.phone = isRtl ? 'رقم الهاتف مطلوب' : 'Phone number is required';
     } else if (phone.trim().length < 10) {
       errs.phone = isRtl ? 'رقم الهاتف غير صحيح' : 'Invalid phone number';
     }
-    if (!city.trim()) {
-      errs.city = isRtl ? 'المدينة / المنطقة مطلوبة' : 'City / Area is required';
+    if (!activeGov) {
+      errs.governorate = isRtl ? 'اختر المحافظة' : 'Select a governorate';
     }
     if (!address.trim()) {
-      errs.address = isRtl ? 'العنوان بالتفصيل مطلوب' : 'Street address is required';
+      errs.address = isRtl ? 'العنوان بالتفصيل مطلوب' : 'Detailed address is required';
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
-  // Called when user clicks "تأكيد الطلب" -> Triggers 10s Grace Period
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (isSubmitting || isFinalizingRef.current || isGraceActiveRef.current || gracePeriodActive) {
       return;
     }
+    setSubmitError(null);
     if (!validate()) return;
 
-    const gov = EGYPT_GOVERNORATES[govIndex];
-    const orderNumber = `BLD-2026-${Math.floor(1000 + Math.random() * 9000)}`;
-    const fullRecipientName = `${firstName.trim()} ${lastName.trim()}`.trim();
+    const govName = activeGov
+      ? (lang === 'ar' ? activeGov.name_ar || activeGov.name : activeGov.name_en || activeGov.name)
+      : '';
 
-    const newOrder: Order = {
-      id: `ord_${Date.now()}`,
-      orderNumber,
-      date: new Date().toISOString().split('T')[0],
-      status: 'pending',
-      items: lines.map((l) => ({
-        id: l.product.id,
-        slug: l.product.slug,
-        nameAr: l.product.name.ar,
-        nameEn: l.product.name.en,
-        image: l.product.image,
-        price: l.product.price,
-        qty: l.qty,
-        weight: l.product.weight,
-      })),
-      subtotal,
-      shipping: shippingFee,
-      total: grandTotal,
-      governorate: isRtl ? gov.ar : gov.en,
-      address: `${city} — ${address}${notes ? ` (ملاحظة: ${notes})` : ''} | المستلم: ${fullRecipientName} (${phone})`,
-    };
+    const payload: CheckoutGuestPayload | CheckoutSavedAddressPayload = activeSavedAddress
+      ? {
+          address_id: activeSavedAddress.id,
+          payment_method: paymentMethod,
+          coupon_code: appliedCoupon?.code ?? null,
+          notes: notes.trim() || undefined,
+        }
+      : {
+          name: fullName.trim(),
+          phone: phone.trim(),
+          email: email.trim() || undefined,
+          governorate_id: Number(activeGov?.id ?? governorateId),
+          address: address.trim(),
+          payment_method: paymentMethod,
+          coupon_code: appliedCoupon?.code ?? null,
+          notes: notes.trim() || undefined,
+        };
 
-    const addressDetails: PendingOrderState['addressDetails'] = {
-      fullName: fullRecipientName,
-      phone,
-      email: email.trim() || undefined,
-      city,
-      street: address,
-      governorate: isRtl ? gov.ar : gov.en,
-      governorateCode: gov.en,
-      notes: notes.trim() || undefined,
+    const snapshot: PendingCheckoutSnapshot = {
+      payload,
+      preview: {
+        recipientName: activeSavedAddress ? activeSavedAddress.name : fullName.trim(),
+        phone: activeSavedAddress ? activeSavedAddress.phone : phone.trim(),
+        addressSummary: activeSavedAddress ? activeSavedAddress.full_address || activeSavedAddress.line : address.trim(),
+        governorateName: activeSavedAddress ? activeSavedAddress.governorate || govName : govName,
+        paymentMethod,
+        shippingFee,
+        discount: discountAmount,
+        total: grandTotal,
+      },
     };
 
     if (cancelNoticeTimerRef.current !== null) {
@@ -249,19 +280,16 @@ export default function CheckoutPage() {
       cancelNoticeTimerRef.current = null;
     }
 
-    const nextPending: PendingOrderState = { order: newOrder, addressDetails };
-    pendingOrderRef.current = nextPending;
+    pendingOrderRef.current = snapshot;
     isFinalizingRef.current = false;
     isGraceActiveRef.current = true;
 
-    // Activate the 10-second grace period
-    setPendingOrderData(nextPending);
+    setPendingSnapshot(snapshot);
     setGraceSeconds(GRACE_PERIOD_SECONDS);
     setGracePeriodActive(true);
     setCancelNotice(null);
   };
 
-  // Finalizes order & dispatches to Porter shipping
   const finalizeOrder = useCallback(async () => {
     const currentPending = pendingOrderRef.current;
     if (!currentPending || isFinalizingRef.current) return;
@@ -270,51 +298,61 @@ export default function CheckoutPage() {
     isFinalizingRef.current = true;
     isGraceActiveRef.current = false;
     setIsSubmitting(true);
-    setGracePeriodActive(false);
-
-    const { order, addressDetails } = currentPending;
+    setSubmitError(null);
 
     try {
-      // Connect to Porter Shipping Integration
-      const shipment = await dispatchOrderToPorter(order, addressDetails);
+      const res = await checkoutApi.placeOrder(currentPending.payload, lang);
+      const confirmed = res.data;
 
-      const confirmedOrder: Order = {
-        ...order,
-        shippingCarrier: shipment.carrier,
-        shippingTrackingNumber: shipment.trackingNumber,
-        shippingWaybill: shipment.waybillNumber,
-        shippingStatus: shipment.status,
-        shippingTrackingUrl: shipment.trackingUrl,
-        estimatedDelivery: shipment.estimatedDeliveryDate,
-        porterSyncReady: true,
-      };
-
-      addOrder(confirmedOrder);
-      clear();
-      setPlacedOrder(confirmedOrder);
+      setGracePeriodActive(false);
+      setPlacedOrder(confirmed);
       pendingOrderRef.current = null;
-      setPendingOrderData(null);
+      setPendingSnapshot(null);
+
+      await fetchCart();
+      if (isAuthenticated) {
+        void Promise.all([
+          fetchOrders(lang),
+          fetchNotifications(lang),
+          fetchUnreadCount(),
+        ]);
+      }
+
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
-      console.error('Porter dispatch error:', err);
-      addOrder(order);
-      clear();
-      setPlacedOrder(order);
+      setGracePeriodActive(false);
       pendingOrderRef.current = null;
-      setPendingOrderData(null);
+      setPendingSnapshot(null);
+
+      const apiErr = err as ApiError;
+      if (apiErr?.errors) {
+        const mapped: Record<string, string> = {};
+        if (apiErr.errors.name?.[0]) mapped.fullName = apiErr.errors.name[0];
+        if (apiErr.errors.phone?.[0]) mapped.phone = apiErr.errors.phone[0];
+        if (apiErr.errors.address?.[0]) mapped.address = apiErr.errors.address[0];
+        if (apiErr.errors.governorate_id?.[0]) mapped.governorate = apiErr.errors.governorate_id[0];
+        if (Object.keys(mapped).length > 0) setErrors(mapped);
+      }
+
+      setSubmitError(
+        extractErrorMessage(
+          err,
+          t('تعذر إتمام الطلب، برجاء مراجعة البيانات والمحاولة مرة أخرى', 'Could not place order. Please review your details and try again.')
+        )
+      );
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       isFinalizingRef.current = false;
       setIsSubmitting(false);
       setGraceSeconds(GRACE_PERIOD_SECONDS);
     }
-  }, [addOrder, clear, clearCountdownTimer]);
+  }, [clearCountdownTimer, fetchCart, fetchNotifications, fetchOrders, fetchUnreadCount, isAuthenticated, lang, t]);
 
   const finalizeOrderRef = useRef(finalizeOrder);
   useEffect(() => {
     finalizeOrderRef.current = finalizeOrder;
   }, [finalizeOrder]);
 
-  // 10-Second Countdown Interval (single interval while grace period is active)
   useEffect(() => {
     if (!gracePeriodActive) {
       clearCountdownTimer();
@@ -334,7 +372,6 @@ export default function CheckoutPage() {
     };
   }, [gracePeriodActive, clearCountdownTimer]);
 
-  // Trigger auto-confirm only when countdown reaches 0 and grace period was not cancelled
   useEffect(() => {
     if (
       gracePeriodActive &&
@@ -347,21 +384,15 @@ export default function CheckoutPage() {
     }
   }, [gracePeriodActive, graceSeconds]);
 
-  // Cleanup all active timers if user navigates away during grace period
   useEffect(() => {
     return () => {
       clearCountdownTimer();
       isGraceActiveRef.current = false;
-      if (cancelNoticeTimerRef.current !== null) {
-        clearTimeout(cancelNoticeTimerRef.current);
-      }
-      if (copyNoticeTimerRef.current !== null) {
-        clearTimeout(copyNoticeTimerRef.current);
-      }
+      if (cancelNoticeTimerRef.current !== null) clearTimeout(cancelNoticeTimerRef.current);
+      if (copyNoticeTimerRef.current !== null) clearTimeout(copyNoticeTimerRef.current);
     };
   }, [clearCountdownTimer]);
 
-  // User cancels during the 10 seconds
   const cancelGracePeriod = useCallback(() => {
     if (isFinalizingRef.current) return;
 
@@ -371,7 +402,7 @@ export default function CheckoutPage() {
 
     setGracePeriodActive(false);
     setGraceSeconds(GRACE_PERIOD_SECONDS);
-    setPendingOrderData(null);
+    setPendingSnapshot(null);
     setIsSubmitting(false);
     setCancelNotice(
       isRtl
@@ -380,49 +411,45 @@ export default function CheckoutPage() {
     );
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    if (cancelNoticeTimerRef.current !== null) {
-      clearTimeout(cancelNoticeTimerRef.current);
-    }
+    if (cancelNoticeTimerRef.current !== null) clearTimeout(cancelNoticeTimerRef.current);
     cancelNoticeTimerRef.current = setTimeout(() => {
       setCancelNotice(null);
       cancelNoticeTimerRef.current = null;
     }, 6000);
   }, [clearCountdownTimer, isRtl]);
 
-  const copyTrackingCode = (code: string) => {
+  const copyOrderNumber = (code: string) => {
     navigator.clipboard?.writeText(code);
-    setCopiedTracking(true);
-    if (copyNoticeTimerRef.current !== null) {
-      clearTimeout(copyNoticeTimerRef.current);
-    }
+    setCopiedOrderNum(true);
+    if (copyNoticeTimerRef.current !== null) clearTimeout(copyNoticeTimerRef.current);
     copyNoticeTimerRef.current = setTimeout(() => {
-      setCopiedTracking(false);
+      setCopiedOrderNum(false);
       copyNoticeTimerRef.current = null;
     }, 2500);
   };
 
   // ── ORDER SUCCESS CONFIRMATION VIEW ────────────────────────
   if (placedOrder) {
-    const est = getEstimatedDeliveryDays(placedOrder.governorate);
+    const whatsappDigits = (settings?.whatsapp || settings?.store_phone || '201000000000').replace(/[^\d]/g, '');
 
     return (
-      <div className="bg-cream pt-[68px] md:pt-[84px] min-h-[85vh] flex items-center justify-center py-16 px-4">
-        <div className="w-full max-w-3xl rounded-[36px] border hairline bg-white p-6 sm:p-12 text-center shadow-2xl">
-          <div className="mx-auto mb-5 grid h-20 w-20 place-items-center rounded-full bg-baladi-green/15 text-baladi-green animate-bounce">
+      <div className="flex min-h-[85vh] items-center justify-center bg-cream px-4 py-16 pt-[68px] md:pt-[84px]">
+        <div className="w-full max-w-3xl rounded-[36px] border hairline bg-white p-6 text-center shadow-2xl sm:p-12">
+          <div className="mx-auto mb-5 grid h-20 w-20 animate-bounce place-items-center rounded-full bg-baladi-green/15 text-baladi-green">
             <CheckCircle2 className="h-12 w-12" />
           </div>
 
-          <div className="inline-flex items-center gap-2 rounded-full bg-baladi-yellow/20 px-4 py-1.5 text-xs font-black text-baladi-ink mb-3">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-baladi-yellow/20 px-4 py-1.5 text-xs font-black text-baladi-ink">
             <Sparkles className="h-4 w-4 text-baladi-red" />
-            {t('تم تأكيد طلبك وإرساله لشركة الشحن بنجاح!', 'Order Confirmed & Sent to Shipping!')}
+            {t('تم تسجيل طلبك بنجاح!', 'Order Placed Successfully!')}
           </div>
 
-          <h1 className="t-display text-2xl sm:text-3xl text-ink">
+          <h1 className="t-display text-2xl text-ink sm:text-3xl">
             {t('شكراً لاختيارك طعام بلدي', 'Thank you for choosing Baladi')}
           </h1>
 
-          {/* Porter Shipping Card */}
-          <div className="mt-8 overflow-hidden rounded-3xl border-2 border-baladi-green/30 bg-emerald-50/40 p-5 sm:p-6 text-start shadow-sm">
+          {/* Order Number & Status Card */}
+          <div className="mt-8 overflow-hidden rounded-3xl border-2 border-baladi-green/30 bg-emerald-50/40 p-5 text-start shadow-sm sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-baladi-green/20 pb-4">
               <div className="flex items-center gap-3">
                 <div className="grid h-10 w-10 place-items-center rounded-xl bg-baladi-green text-white">
@@ -430,110 +457,118 @@ export default function CheckoutPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-ink">
-                    {t('شركة الشحن:', 'Carrier:')} {placedOrder.shippingCarrier || 'Porter Express Egypt (بورتر)'}
+                    {t('بورتر للشحن السريع', 'Porter Express Egypt')}
                   </h3>
                   <p className="text-[11px] font-bold text-baladi-green">
-                    {t('موعد التوصيل المتوقع:', 'Estimated Delivery:')} {isRtl ? est.labelAr : est.labelEn}
+                    {t('حالة الطلب الحالية:', 'Current Status:')} {placedOrder.status_label}
                   </p>
                 </div>
               </div>
 
               <div className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-[11px] font-black text-ink shadow-sm">
                 <ShieldCheck className="h-3.5 w-3.5 text-baladi-green" />
-                <span>{t('جاهز للربط الفوري (Porter Integration Ready)', 'Porter Integration Ready')}</span>
+                <span>{placedOrder.status_label}</span>
               </div>
             </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 text-xs font-bold text-ink/80">
-              <div className="rounded-2xl bg-white p-3.5 border hairline">
-                <span className="block text-[11px] font-extrabold text-ink/60">{t('رقم تتبع الشحنة (Porter Tracking ID)', 'Tracking Number')}</span>
+            <div className="mt-4 grid gap-3 text-xs font-bold text-ink/80 sm:grid-cols-2">
+              <div className="rounded-2xl border hairline bg-white p-3.5">
+                <span className="block text-[11px] font-extrabold text-ink/60">
+                  {t('رقم الطلب', 'Order Number')}
+                </span>
                 <div className="mt-1 flex items-center justify-between">
                   <span className="font-mono text-sm font-black text-baladi-red">
-                    {placedOrder.shippingTrackingNumber || 'PRTR-EG-2026-PENDING'}
+                    {placedOrder.order_number}
                   </span>
                   <button
                     type="button"
-                    onClick={() => copyTrackingCode(placedOrder.shippingTrackingNumber || '')}
-                    className="inline-flex items-center gap-1 rounded-lg bg-cream px-2 py-1 text-[11px] font-black text-ink hover:bg-baladi-yellow/40 transition-colors"
+                    onClick={() => copyOrderNumber(placedOrder.order_number)}
+                    className="inline-flex items-center gap-1 rounded-lg bg-cream px-2 py-1 text-[11px] font-black text-ink transition-colors hover:bg-baladi-yellow/40"
                   >
-                    {copiedTracking ? <Check className="h-3.5 w-3.5 text-baladi-green" /> : <Copy className="h-3.5 w-3.5" />}
-                    {copiedTracking ? t('تم النسخ', 'Copied') : t('نسخ', 'Copy')}
+                    {copiedOrderNum ? <Check className="h-3.5 w-3.5 text-baladi-green" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copiedOrderNum ? t('تم النسخ', 'Copied') : t('نسخ', 'Copy')}
                   </button>
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-white p-3.5 border hairline">
-                <span className="block text-[11px] font-extrabold text-ink/60">{t('رقم البوليصة (Waybill)', 'Waybill Number')}</span>
-                <span className="mt-1 block font-mono text-sm font-black text-ink">
-                  {placedOrder.shippingWaybill || `WB-${placedOrder.orderNumber}`}
+              <div className="rounded-2xl border hairline bg-white p-3.5">
+                <span className="block text-[11px] font-extrabold text-ink/60">
+                  {t('عنوان التسليم', 'Delivery Address')}
+                </span>
+                <span className="mt-1 block text-xs font-black text-ink">
+                  {placedOrder.customer_name} — {placedOrder.customer_address}
                 </span>
               </div>
             </div>
 
-            {/* Visual Shipment Timeline */}
-            <div className="mt-5 pt-4 border-t border-baladi-green/20">
-              <p className="text-[11px] font-extrabold uppercase tracking-wider text-ink/60 mb-3">
-                {t('مراحل شحن وتوصيل الطلب مع بورتر:', 'Porter Delivery Stages:')}
-              </p>
-              <div className="grid grid-cols-4 gap-2 text-center">
-                {[
-                  { step: '1', labelAr: 'تم التسجيل', labelEn: 'Registered', active: true },
-                  { step: '2', labelAr: 'تجهيز المستودع', labelEn: 'Packaging', active: true },
-                  { step: '3', labelAr: 'استلام بورتر', labelEn: 'Courier Pickup', active: false },
-                  { step: '4', labelAr: 'تم التسليم', labelEn: 'Delivered', active: false },
-                ].map((st) => (
-                  <div key={st.step} className="flex flex-col items-center">
-                    <div
-                      className={`grid h-7 w-7 place-items-center rounded-full text-xs font-black ${
-                        st.active ? 'bg-baladi-green text-white shadow' : 'bg-gray-200 text-ink/40'
-                      }`}
-                    >
-                      {st.active ? '✓' : st.step}
-                    </div>
-                    <span className={`mt-1.5 text-[10.5px] font-extrabold ${st.active ? 'text-baladi-green font-black' : 'text-ink/50'}`}>
-                      {isRtl ? st.labelAr : st.labelEn}
+            {/* Order Items */}
+            {placedOrder.items?.length > 0 && (
+              <div className="mt-4 space-y-2 border-t border-baladi-green/20 pt-4">
+                {placedOrder.items.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-xs font-bold text-ink/85">
+                    <span>
+                      {item.name} × {item.quantity}
                     </span>
+                    <span className="font-black text-ink">{egp(item.total, lang)}</span>
                   </div>
                 ))}
               </div>
-            </div>
+            )}
           </div>
 
-          <div className="mx-auto mt-6 max-w-md rounded-2xl border hairline bg-cream/40 p-5 text-start shadow-sm space-y-2.5">
-            <div className="flex items-center justify-between border-b hairline pb-3">
-              <span className="text-xs font-bold text-ink/70">{t('رقم الطلب بالمتجر', 'Store Order Number')}</span>
-              <span className="font-mono text-sm font-black text-baladi-red">{placedOrder.orderNumber}</span>
+          <div className="mx-auto mt-6 max-w-md space-y-2.5 rounded-2xl border hairline bg-cream/40 p-5 text-start shadow-sm">
+            <div className="flex items-center justify-between text-xs font-bold text-ink/80">
+              <span>{t('المجموع الفرعي', 'Subtotal')}</span>
+              <span>{egp(placedOrder.subtotal, lang)}</span>
             </div>
-            <div className="flex items-center justify-between py-1">
-              <span className="text-xs font-bold text-ink/70">{t('المبلغ الإجمالي عند الاستلام', 'Total Cash on Delivery')}</span>
-              <span className="text-base font-black text-ink">{egp(placedOrder.total, lang)}</span>
+            <div className="flex items-center justify-between text-xs font-bold text-ink/80">
+              <span>{t('الشحن', 'Shipping')}</span>
+              <span>{placedOrder.shipping_cost === 0 ? t('مجاني', 'Free') : egp(placedOrder.shipping_cost, lang)}</span>
+            </div>
+            {placedOrder.discount > 0 && (
+              <div className="flex items-center justify-between text-xs font-bold text-baladi-green">
+                <span>{t('الخصم', 'Discount')}</span>
+                <span>-{egp(placedOrder.discount, lang)}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between border-t hairline pt-2 text-sm font-black text-ink">
+              <span>{t('الإجمالي النهائي', 'Final Total')}</span>
+              <span className="text-baladi-red">{egp(placedOrder.total, lang)}</span>
             </div>
             <div className="flex items-center justify-between border-t hairline pt-2 text-xs font-bold text-ink/80">
               <span>{t('طريقة الدفع', 'Payment Method')}</span>
-              <span className="text-baladi-green font-black">{t('الدفع عند الاستلام 💵', 'Cash on Delivery 💵')}</span>
+              <span className="font-black text-baladi-green">
+                {placedOrder.payment_method === 'online'
+                  ? t('دفع إلكتروني', 'Online Payment')
+                  : t('الدفع عند الاستلام', 'Cash on Delivery')}
+              </span>
             </div>
           </div>
 
-          <p className="mx-auto mt-6 max-w-lg text-[14px] font-medium leading-relaxed text-ink/80">
-            {t(
-              `سيتواصل معك مندوب شركة بورتر للشحن عبر الواتساب أو الاتصال على (${phone}) لتسليم الشحنة لباب بيتك.`,
-              `The Porter delivery courier will reach out via call or WhatsApp at (${phone}) to deliver to your doorstep.`
-            )}
-          </p>
-
           <div className="mt-8 flex flex-wrap justify-center gap-3.5">
-            <Link to="/profile" className="btn btn-ink text-sm font-black">
-              {t('متابعة الشحنة في حسابي', 'Track in My Account')}
+            <Link
+              to={`/track?order=${encodeURIComponent(placedOrder.order_number)}`}
+              className="btn btn-ink text-sm font-black"
+            >
+              {t('تتبع حالة الطلب', 'Track Order Status')}
             </Link>
+            {isAuthenticated && (
+              <Link to="/profile?tab=orders" className="btn btn-ghost text-sm font-black">
+                {t('طلباتي في الحساب', 'My Orders')}
+              </Link>
+            )}
             <a
-              href={`https://wa.me/201000000000?text=${encodeURIComponent(
-                `مرحباً بلدي، قمت بتأكيد الطلب رقم ${placedOrder.orderNumber} ورقم تتبع الشحن ${placedOrder.shippingTrackingNumber || ''}`
+              href={`https://wa.me/${whatsappDigits}?text=${encodeURIComponent(
+                t(
+                  `مرحباً بلدي، استفسار بخصوص الطلب رقم ${placedOrder.order_number}`,
+                  `Hello Baladi, inquiry regarding order ${placedOrder.order_number}`
+                )
               )}`}
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-yellow text-sm font-black"
             >
-              {t('تأكيد عبر واتساب بلدي', 'Chat via WhatsApp')}
+              {t('تواصل عبر واتساب بلدي', 'Chat via WhatsApp')}
             </a>
             <Link to="/" className="btn btn-ghost text-sm font-bold">
               {t('العودة للرئيسية', 'Back to Home')}
@@ -545,9 +580,9 @@ export default function CheckoutPage() {
   }
 
   // ── EMPTY CART VIEW ─────────────────────────────────────────
-  if (lines.length === 0) {
+  if (items.length === 0) {
     return (
-      <div className="bg-cream pt-[68px] md:pt-[84px] min-h-[80vh] flex items-center justify-center py-16 px-4">
+      <div className="flex min-h-[80vh] items-center justify-center bg-cream px-4 py-16 pt-[68px] md:pt-[84px]">
         <div className="w-full max-w-lg rounded-[32px] border hairline bg-white p-10 text-center shadow-md">
           <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-cream text-ink/40">
             <ShoppingBag className="h-8 w-8" />
@@ -573,32 +608,23 @@ export default function CheckoutPage() {
 
   // ── MAIN DEDICATED CHECKOUT PAGE ────────────────────────────
   return (
-    <div className="relative bg-cream pt-[68px] md:pt-[84px] min-h-[90vh] pb-16">
+    <div className="relative min-h-[90vh] bg-cream pb-16 pt-[68px] md:pt-[84px]">
       {/* ── 10-SECOND ORDER CONFIRMATION GRACE PERIOD MODAL ── */}
-      {gracePeriodActive && pendingOrderData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/75 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="relative w-full max-w-lg overflow-hidden rounded-[36px] border-2 border-baladi-yellow bg-white p-6 sm:p-8 text-center shadow-2xl animate-in zoom-in-95 duration-200">
-            {/* Ambient Background Glow */}
-            <div className="pointer-events-none absolute -top-24 -end-24 h-48 w-48 rounded-full bg-baladi-yellow/20 blur-3xl" />
+      {gracePeriodActive && pendingSnapshot && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/75 p-4 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="relative w-full max-w-lg overflow-hidden rounded-[36px] border-2 border-baladi-yellow bg-white p-6 text-center shadow-2xl animate-in zoom-in-95 duration-200 sm:p-8">
+            <div className="pointer-events-none absolute -end-24 -top-24 h-48 w-48 rounded-full bg-baladi-yellow/20 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-24 -start-24 h-48 w-48 rounded-full bg-baladi-red/15 blur-3xl" />
 
             <div className="relative z-10">
-              <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-1.5 text-xs font-black text-amber-900 mb-4">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-1.5 text-xs font-black text-amber-900">
                 <Timer className="h-4 w-4 animate-spin text-baladi-red" style={{ animationDuration: '3s' }} />
                 <span>{t('مهلة مراجعة وتأكيد الطلب (10 ثوانٍ)', 'Order Review & Grace Period (10s)')}</span>
               </div>
 
-              {/* Animated Countdown Circle Ring */}
               <div className="relative mx-auto my-3 flex h-28 w-28 items-center justify-center">
                 <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="44"
-                    fill="none"
-                    stroke="#F2E6D5"
-                    strokeWidth="8"
-                  />
+                  <circle cx="50" cy="50" r="44" fill="none" stroke="#F2E6D5" strokeWidth="8" />
                   <circle
                     cx="50"
                     cy="50"
@@ -613,49 +639,56 @@ export default function CheckoutPage() {
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="font-mono text-3xl font-black text-ink tabular-nums">{displayGraceSeconds}</span>
+                  <span className="font-mono text-3xl font-black tabular-nums text-ink">{displayGraceSeconds}</span>
                   <span className="text-[10px] font-extrabold text-ink/60">{t('ثوانٍ', 'sec')}</span>
                 </div>
               </div>
 
-              <h2 className="t-display text-xl sm:text-2xl text-ink">
+              <h2 className="t-display text-xl text-ink sm:text-2xl">
                 {t('جاري مراجعة واعتماد طلبك...', 'Confirming your order...')}
               </h2>
 
-              <p className="mx-auto mt-2 max-w-sm text-xs sm:text-sm font-semibold leading-relaxed text-ink/75">
+              <p className="mx-auto mt-2 max-w-sm text-xs font-semibold leading-relaxed text-ink/75 sm:text-sm">
                 {t(
-                  'أمامك 10 ثوانٍ لمراجعة الطلب قبل إرساله نهائياً لشركة الشحن (بورتر). يمكنك الإلغاء فوراً إذا كنت ترغب بتعديل البيانات أو السلة.',
-                  'You have 10 seconds to review before dispatching to Porter shipping. You can cancel now to edit your info or cart.'
+                  'أمامك 10 ثوانٍ لمراجعة الطلب قبل إرساله نهائياً. يمكنك الإلغاء فوراً إذا كنت ترغب بتعديل البيانات أو السلة.',
+                  'You have 10 seconds to review before finalizing your order. You can cancel now to edit your info or cart.'
                 )}
               </p>
 
-              {/* Order Quick Snapshot */}
-              <div className="mt-5 rounded-2xl border hairline bg-cream/50 p-4 text-start text-xs font-bold text-ink/80 space-y-1.5">
+              <div className="mt-5 space-y-1.5 rounded-2xl border hairline bg-cream/50 p-4 text-start text-xs font-bold text-ink/80">
                 <div className="flex justify-between border-b hairline pb-2">
                   <span className="text-ink/60">{t('المستلم:', 'Recipient:')}</span>
-                  <span className="text-ink font-black">{pendingOrderData.addressDetails.fullName} ({pendingOrderData.addressDetails.phone})</span>
+                  <span className="font-black text-ink">
+                    {pendingSnapshot.preview.recipientName} ({pendingSnapshot.preview.phone})
+                  </span>
                 </div>
                 <div className="flex justify-between border-b hairline py-1.5">
                   <span className="text-ink/60">{t('العنوان:', 'Address:')}</span>
-                  <span className="text-ink truncate max-w-[220px]">{pendingOrderData.addressDetails.city}، {pendingOrderData.addressDetails.governorate}</span>
+                  <span className="max-w-[240px] truncate text-ink">
+                    {pendingSnapshot.preview.addressSummary}
+                    {pendingSnapshot.preview.governorateName ? ` · ${pendingSnapshot.preview.governorateName}` : ''}
+                  </span>
                 </div>
                 <div className="flex justify-between border-b hairline py-1.5">
-                  <span className="text-ink/60">{t('شركة الشحن:', 'Carrier:')}</span>
-                  <span className="text-baladi-green font-black">{PORTER_CONFIG.carrierName}</span>
+                  <span className="text-ink/60">{t('الدفع:', 'Payment:')}</span>
+                  <span className="font-black text-baladi-green">
+                    {pendingSnapshot.preview.paymentMethod === 'online'
+                      ? t('دفع إلكتروني', 'Online')
+                      : t('الدفع عند الاستلام', 'Cash on Delivery')}
+                  </span>
                 </div>
                 <div className="flex justify-between pt-1">
-                  <span className="text-ink/60">{t('الإجمالي عند الاستلام:', 'Cash on Delivery:')}</span>
-                  <span className="text-sm font-black text-baladi-red">{egp(pendingOrderData.order.total, lang)}</span>
+                  <span className="text-ink/60">{t('الإجمالي النهائي:', 'Total:')}</span>
+                  <span className="text-sm font-black text-baladi-red">{egp(pendingSnapshot.preview.total, lang)}</span>
                 </div>
               </div>
 
-              {/* Grace Period Actions */}
-              <div className="mt-6 flex flex-col sm:flex-row gap-3">
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <button
                   type="button"
                   onClick={cancelGracePeriod}
                   disabled={isSubmitting}
-                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-baladi-red/40 bg-white py-3.5 px-4 text-xs font-black text-baladi-red hover:bg-baladi-red/5 active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-baladi-red/40 bg-white px-4 py-3.5 text-xs font-black text-baladi-red transition-all hover:bg-baladi-red/5 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <RotateCcw className="h-4 w-4 shrink-0" />
                   <span>{t('إلغاء الطلب والتعديل', 'Cancel Order & Edit')}</span>
@@ -665,7 +698,7 @@ export default function CheckoutPage() {
                   type="button"
                   onClick={() => void finalizeOrder()}
                   disabled={isSubmitting}
-                  className="relative overflow-hidden flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-ink py-3.5 px-4 text-xs font-black text-white shadow-lg transition-all hover:brightness-110 active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="relative inline-flex flex-1 items-center justify-center gap-2 overflow-hidden rounded-2xl bg-ink px-4 py-3.5 text-xs font-black text-white shadow-lg transition-all hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   <span
                     aria-hidden="true"
@@ -692,16 +725,31 @@ export default function CheckoutPage() {
         <div className="u-container mb-6 animate-in fade-in duration-300">
           <div className="flex items-center justify-between rounded-2xl border border-baladi-yellow bg-amber-50 p-4 text-xs font-black text-amber-900 shadow-sm">
             <div className="flex items-center gap-2.5">
-              <AlertCircle className="h-5 w-5 text-baladi-red shrink-0" />
+              <AlertCircle className="h-5 w-5 shrink-0 text-baladi-red" />
               <span>{cancelNotice}</span>
             </div>
-            <button onClick={() => setCancelNotice(null)} className="text-amber-800 hover:text-ink">
+            <button type="button" onClick={() => setCancelNotice(null)} className="text-amber-800 hover:text-ink">
               <X className="h-4 w-4" />
             </button>
           </div>
         </div>
       )}
-      
+
+      {/* API Error Banner */}
+      {submitError && (
+        <div className="u-container mb-6 animate-in fade-in duration-300">
+          <div className="flex items-center justify-between rounded-2xl border border-baladi-red/40 bg-red-50 p-4 text-xs font-black text-baladi-red shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <AlertCircle className="h-5 w-5 shrink-0" />
+              <span>{submitError}</span>
+            </div>
+            <button type="button" onClick={() => setSubmitError(null)} className="hover:text-ink">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Breadcrumb Header */}
       <div className="border-b hairline bg-white/70 py-4">
         <div className="u-container flex items-center gap-2 text-xs font-bold text-ink/70">
@@ -709,13 +757,11 @@ export default function CheckoutPage() {
           <ChevronRight className="h-3.5 w-3.5 rtl:rotate-180" />
           <Link to="/cart" className="hover:text-ink">{t('السلة', 'Cart')}</Link>
           <ChevronRight className="h-3.5 w-3.5 rtl:rotate-180" />
-          <span className="text-ink font-black">{t('إتمام الطلب', 'Checkout')}</span>
+          <span className="font-black text-ink">{t('إتمام الطلب', 'Checkout')}</span>
         </div>
       </div>
 
       <div className="u-container py-10">
-        
-        {/* Page Title */}
         <div className="mb-8 text-start">
           <p className="t-eyebrow text-baladi-red">{t('خطوة الشحن والدفع', 'SHIPPING & PAYMENT')}</p>
           <h1 className="t-display mt-2 text-[clamp(2rem,4.4vw,3.2rem)] text-ink">
@@ -726,22 +772,19 @@ export default function CheckoutPage() {
           </p>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-12 items-start">
-          
+        <div className="grid items-start gap-8 lg:grid-cols-12">
           {/* ── LEFT: SHIPPING INFORMATION FORM (7 cols) ─────── */}
-          <div className="lg:col-span-7 rounded-[32px] border hairline bg-white p-6 sm:p-8 shadow-sm text-start">
-            
-            {/* Header */}
-            <div className="flex items-center gap-3 pb-5 border-b hairline">
+          <div className="rounded-[32px] border hairline bg-white p-6 text-start shadow-sm sm:p-8 lg:col-span-7">
+            <div className="flex items-center gap-3 border-b hairline pb-5">
               <div className="grid h-12 w-12 place-items-center rounded-2xl bg-baladi-red/10 text-baladi-red">
                 <MapPin className="h-6 w-6" />
               </div>
               <div>
-                <h2 className="text-xl font-black text-ink leading-tight">
+                <h2 className="text-xl font-black leading-tight text-ink">
                   {t('بيانات الشحن والتوصيل', 'Shipping Information')}
                 </h2>
                 <p className="text-xs font-semibold text-ink/70">
-                  {t('أدخل عنوان وبيانات المستلم لتوصيل الشحنة', 'Enter recipient address and contact details')}
+                  {t('اختر عنواناً محفوظاً أو أدخل عنوان التوصيل يدوياً', 'Pick a saved address or enter delivery details')}
                 </p>
               </div>
             </div>
@@ -749,17 +792,17 @@ export default function CheckoutPage() {
             {/* ── SAVED ADDRESSES 1-CLICK SELECTOR ── */}
             {isAuthenticated && addresses.length > 0 && (
               <div className="mt-5 rounded-2xl border hairline bg-cream/40 p-4 shadow-xs">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[13px] font-black text-ink flex items-center gap-1.5">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-[13px] font-black text-ink">
                     <HomeIcon className="h-4 w-4 text-baladi-yellow" />
                     {t('عناوينك المحفوظة (اختر بنقرة واحدة):', 'Saved Addresses (Pick in 1-click):')}
                   </span>
                   <button
                     type="button"
-                    onClick={handleSelectCustomAddress}
+                    onClick={() => setSelectedAddressId('custom')}
                     className="text-[11.5px] font-black text-baladi-red hover:underline"
                   >
-                    {selectedAddressId === 'custom' ? t('✓ إدخال يدوي', '✓ Manual entry') : t('+ عنوان يدوي جديد', '+ New custom address')}
+                    {selectedAddressId === 'custom' ? t('✓ إدخال يدوي', '✓ Manual entry') : t('+ عنوان يدوي جديد', '+ Use another address')}
                   </button>
                 </div>
 
@@ -770,11 +813,11 @@ export default function CheckoutPage() {
                       <button
                         key={addr.id}
                         type="button"
-                        onClick={() => applyAddress(addr)}
+                        onClick={() => setSelectedAddressId(addr.id)}
                         className={`group flex items-start gap-3 rounded-2xl border p-3 text-start transition-all ${
                           isSelected
                             ? 'border-baladi-green bg-baladi-green/10 shadow-sm'
-                            : 'border-ink/10 hover:border-ink/30 bg-white'
+                            : 'border-ink/10 bg-white hover:border-ink/30'
                         }`}
                       >
                         <div
@@ -782,14 +825,14 @@ export default function CheckoutPage() {
                             isSelected ? 'bg-baladi-green text-white' : 'bg-ink/10 text-ink/60 group-hover:bg-ink/20'
                           }`}
                         >
-                          {isSelected ? '✓' : addr.title === 'المنزل' || addr.title.toLowerCase() === 'home' ? '🏠' : '🏢'}
+                          {isSelected ? '✓' : '📍'}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13px] font-black text-ink">{addr.title}</p>
+                          <p className="truncate text-[13px] font-black text-ink">{addr.label}</p>
                           <p className="truncate text-[11.5px] font-semibold text-ink/75">
-                            {addr.city} · {addr.governorate}
+                            {addr.name} · {addr.governorate}
                           </p>
-                          <p className="truncate text-[10.5px] text-ink/60">{addr.street}</p>
+                          <p className="truncate text-[10.5px] text-ink/60">{addr.line}</p>
                         </div>
                       </button>
                     );
@@ -798,150 +841,165 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            {/* ── FORM INPUTS ── */}
             <form id="checkout-form" onSubmit={handleSubmit} className="mt-6 space-y-4">
-              
-              {/* Name Row: First Name & Last Name */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="block text-[12px] font-black uppercase text-ink/80 mb-1.5">
-                    {t('الاسم الأول *', 'First Name *')}
-                  </label>
-                  <div className="relative">
-                    <UserIcon className="absolute start-3.5 top-3.5 h-4 w-4 text-ink/40" />
-                    <input
-                      type="text"
-                      value={firstName}
+              {!activeSavedAddress ? (
+                <>
+                  <div>
+                    <label className="mb-1.5 block text-[12px] font-black uppercase text-ink/80">
+                      {t('الاسم بالكامل *', 'Full Name *')}
+                    </label>
+                    <div className="relative">
+                      <UserIcon className="absolute start-3.5 top-3.5 h-4 w-4 text-ink/40" />
+                      <input
+                        type="text"
+                        value={fullName}
+                        onChange={(e) => {
+                          setFullName(e.target.value);
+                          if (errors.fullName) setErrors((p) => ({ ...p, fullName: '' }));
+                        }}
+                        placeholder={isRtl ? 'مثال: أحمد محمود' : 'e.g. Ahmed Mahmoud'}
+                        className={`w-full rounded-xl border bg-cream/20 py-3 pe-3.5 ps-10 text-[14px] font-bold text-ink placeholder:text-ink/40 focus:outline-none focus:ring-2 ${
+                          errors.fullName ? 'border-red-500 focus:ring-red-200' : 'hairline focus:ring-baladi-yellow'
+                        }`}
+                      />
+                    </div>
+                    {errors.fullName && <p className="mt-1 text-[11px] font-bold text-red-600">{errors.fullName}</p>}
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1.5 block text-[12px] font-black uppercase text-ink/80">
+                        {t('رقم الهاتف / الواتساب *', 'Phone Number *')}
+                      </label>
+                      <div className="relative">
+                        <Phone className="absolute start-3.5 top-3.5 h-4 w-4 text-ink/40" />
+                        <input
+                          type="tel"
+                          dir="ltr"
+                          value={phone}
+                          onChange={(e) => {
+                            setPhone(e.target.value);
+                            if (errors.phone) setErrors((p) => ({ ...p, phone: '' }));
+                          }}
+                          placeholder="01012345678"
+                          className={`w-full rounded-xl border bg-cream/20 py-3 pe-3.5 ps-10 text-[14px] font-bold text-ink placeholder:text-ink/40 focus:outline-none focus:ring-2 ${
+                            errors.phone ? 'border-red-500 focus:ring-red-200' : 'hairline focus:ring-baladi-yellow'
+                          }`}
+                        />
+                      </div>
+                      {errors.phone && <p className="mt-1 text-[11px] font-bold text-red-600">{errors.phone}</p>}
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-[12px] font-black uppercase text-ink/80">
+                        {t('البريد الإلكتروني (اختياري)', 'Email (Optional)')}
+                      </label>
+                      <div className="relative">
+                        <Mail className="absolute start-3.5 top-3.5 h-4 w-4 text-ink/40" />
+                        <input
+                          type="email"
+                          dir="ltr"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="name@example.com"
+                          className="w-full rounded-xl border hairline bg-cream/20 py-3 pe-3.5 ps-10 text-[14px] font-bold text-ink placeholder:text-ink/40 focus:outline-none focus:ring-2 focus:ring-baladi-yellow"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-[12px] font-black uppercase text-ink/80">
+                      {t('المحافظة *', 'Governorate *')}
+                    </label>
+                    <select
+                      value={activeGov?.id ?? ''}
                       onChange={(e) => {
-                        setFirstName(e.target.value);
-                        if (errors.firstName) setErrors((p) => ({ ...p, firstName: '' }));
+                        setGovernorateId(Number(e.target.value));
+                        if (errors.governorate) setErrors((p) => ({ ...p, governorate: '' }));
                       }}
-                      placeholder={isRtl ? 'مثال: أحمد' : 'e.g. Ahmed'}
-                      className={`w-full rounded-xl border bg-cream/20 ps-10 pe-3.5 py-3 text-[14px] font-bold text-ink placeholder:text-ink/40 focus:outline-none focus:ring-2 ${
-                        errors.firstName ? 'border-red-500 focus:ring-red-200' : 'hairline focus:ring-baladi-yellow'
+                      className="w-full rounded-xl border hairline bg-cream/20 px-3.5 py-3 text-[14px] font-bold text-ink focus:outline-none focus:ring-2 focus:ring-baladi-yellow"
+                    >
+                      {governorates.map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {lang === 'ar' ? g.name_ar || g.name : g.name_en || g.name} — {egp(g.shipping_cost, lang)}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.governorate && <p className="mt-1 text-[11px] font-bold text-red-600">{errors.governorate}</p>}
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-[12px] font-black uppercase text-ink/80">
+                      {t('العنوان بالتفصيل *', 'Detailed Address *')}
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={address}
+                      onChange={(e) => {
+                        setAddress(e.target.value);
+                        if (errors.address) setErrors((p) => ({ ...p, address: '' }));
+                      }}
+                      placeholder={isRtl ? 'المدينة، اسم الشارع، رقم العمارة، رقم الشقة...' : 'City, street name, building, apartment...'}
+                      className={`w-full rounded-xl border bg-cream/20 px-3.5 py-3 text-[14px] font-bold text-ink placeholder:text-ink/40 focus:outline-none focus:ring-2 ${
+                        errors.address ? 'border-red-500 focus:ring-red-200' : 'hairline focus:ring-baladi-yellow'
                       }`}
                     />
+                    {errors.address && <p className="mt-1 text-[11px] font-bold text-red-600">{errors.address}</p>}
                   </div>
-                  {errors.firstName && <p className="mt-1 text-[11px] font-bold text-red-600">{errors.firstName}</p>}
+                </>
+              ) : (
+                <div className="rounded-2xl border border-baladi-green/30 bg-baladi-green/5 p-4 text-xs font-bold text-ink">
+                  <p className="text-sm font-black text-ink">
+                    {activeSavedAddress.label} — {activeSavedAddress.name}
+                  </p>
+                  <p className="mt-1 text-ink/80">{activeSavedAddress.full_address || `${activeSavedAddress.line} · ${activeSavedAddress.governorate}`}</p>
+                  <p className="mt-1 font-mono text-ink/70">{activeSavedAddress.phone}</p>
                 </div>
+              )}
 
-                <div>
-                  <label className="block text-[12px] font-black uppercase text-ink/80 mb-1.5">
-                    {t('اسم العائلة', 'Last Name')}
-                  </label>
-                  <input
-                    type="text"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    placeholder={isRtl ? 'مثال: محمود' : 'e.g. Mahmoud'}
-                    className="w-full rounded-xl border hairline bg-cream/20 px-3.5 py-3 text-[14px] font-bold text-ink placeholder:text-ink/40 focus:outline-none focus:ring-2 focus:ring-baladi-yellow"
-                  />
-                </div>
-              </div>
-
-              {/* Contact Row: Phone & Email */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="block text-[12px] font-black uppercase text-ink/80 mb-1.5">
-                    {t('رقم الهاتف / الواتساب *', 'Phone Number *')}
-                  </label>
-                  <div className="relative">
-                    <Phone className="absolute start-3.5 top-3.5 h-4 w-4 text-ink/40" />
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => {
-                        setPhone(e.target.value);
-                        if (errors.phone) setErrors((p) => ({ ...p, phone: '' }));
-                      }}
-                      placeholder="01012345678"
-                      className={`w-full rounded-xl border bg-cream/20 ps-10 pe-3.5 py-3 text-[14px] font-bold text-ink placeholder:text-ink/40 focus:outline-none focus:ring-2 ${
-                        errors.phone ? 'border-red-500 focus:ring-red-200' : 'hairline focus:ring-baladi-yellow'
-                      }`}
-                    />
-                  </div>
-                  {errors.phone && <p className="mt-1 text-[11px] font-bold text-red-600">{errors.phone}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-[12px] font-black uppercase text-ink/80 mb-1.5">
-                    {t('البريد الإلكتروني', 'Email')}
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute start-3.5 top-3.5 h-4 w-4 text-ink/40" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="name@example.com"
-                      className="w-full rounded-xl border hairline bg-cream/20 ps-10 pe-3.5 py-3 text-[14px] font-bold text-ink placeholder:text-ink/40 focus:outline-none focus:ring-2 focus:ring-baladi-yellow"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Location Row: Governorate & City */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="block text-[12px] font-black uppercase text-ink/80 mb-1.5">
-                    {t('المحافظة *', 'Governorate *')}
-                  </label>
-                  <select
-                    value={govIndex}
-                    onChange={(e) => setGovIndex(Number(e.target.value))}
-                    className="w-full rounded-xl border hairline bg-cream/20 px-3.5 py-3 text-[14px] font-bold text-ink focus:outline-none focus:ring-2 focus:ring-baladi-yellow"
-                  >
-                    {EGYPT_GOVERNORATES.map((g, i) => (
-                      <option key={g.en} value={i}>
-                        {g[lang]} — {egp(g.fee, lang)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[12px] font-black uppercase text-ink/80 mb-1.5">
-                    {t('المدينة / الحي *', 'City / Area *')}
-                  </label>
-                  <input
-                    type="text"
-                    value={city}
-                    onChange={(e) => {
-                      setCity(e.target.value);
-                      if (errors.city) setErrors((p) => ({ ...p, city: '' }));
-                    }}
-                    placeholder={isRtl ? 'مثال: مدينة نصر، المعادي، الدقي...' : 'e.g. Nasr City, Maadi...'}
-                    className={`w-full rounded-xl border bg-cream/20 px-3.5 py-3 text-[14px] font-bold text-ink placeholder:text-ink/40 focus:outline-none focus:ring-2 ${
-                      errors.city ? 'border-red-500 focus:ring-red-200' : 'hairline focus:ring-baladi-yellow'
-                    }`}
-                  />
-                  {errors.city && <p className="mt-1 text-[11px] font-bold text-red-600">{errors.city}</p>}
-                </div>
-              </div>
-
-              {/* Detailed Address */}
+              {/* Payment Method */}
               <div>
-                <label className="block text-[12px] font-black uppercase text-ink/80 mb-1.5">
-                  {t('العنوان بالتفصيل *', 'Detailed Address *')}
+                <label className="mb-2 block text-[12px] font-black uppercase text-ink/80">
+                  {t('طريقة الدفع *', 'Payment Method *')}
                 </label>
-                <textarea
-                  rows={2}
-                  value={address}
-                  onChange={(e) => {
-                    setAddress(e.target.value);
-                    if (errors.address) setErrors((p) => ({ ...p, address: '' }));
-                  }}
-                  placeholder={isRtl ? 'اسم الشارع، رقم العمارة، رقم الشقة أو علامة مميزة...' : 'Street name, building, apartment, landmark...'}
-                  className={`w-full rounded-xl border bg-cream/20 px-3.5 py-3 text-[14px] font-bold text-ink placeholder:text-ink/40 focus:outline-none focus:ring-2 ${
-                    errors.address ? 'border-red-500 focus:ring-red-200' : 'hairline focus:ring-baladi-yellow'
-                  }`}
-                />
-                {errors.address && <p className="mt-1 text-[11px] font-bold text-red-600">{errors.address}</p>}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('cod')}
+                    className={`flex items-center gap-3 rounded-2xl border p-3.5 text-start transition-all ${
+                      paymentMethod === 'cod'
+                        ? 'border-baladi-green bg-baladi-green/10 text-ink shadow-xs'
+                        : 'border-ink/15 bg-white text-ink/75 hover:border-ink/30'
+                    }`}
+                  >
+                    <Banknote className={`h-5 w-5 shrink-0 ${paymentMethod === 'cod' ? 'text-baladi-green' : 'text-ink/50'}`} />
+                    <div>
+                      <p className="text-xs font-black text-ink">{t('الدفع عند الاستلام', 'Cash on Delivery')}</p>
+                      <p className="text-[11px] font-semibold text-ink/65">{t('نقداً لمندوب التوصيل', 'Pay cash upon delivery')}</p>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('online')}
+                    className={`flex items-center gap-3 rounded-2xl border p-3.5 text-start transition-all ${
+                      paymentMethod === 'online'
+                        ? 'border-baladi-green bg-baladi-green/10 text-ink shadow-xs'
+                        : 'border-ink/15 bg-white text-ink/75 hover:border-ink/30'
+                    }`}
+                  >
+                    <CreditCard className={`h-5 w-5 shrink-0 ${paymentMethod === 'online' ? 'text-baladi-green' : 'text-ink/50'}`} />
+                    <div>
+                      <p className="text-xs font-black text-ink">{t('دفع إلكتروني', 'Online Payment')}</p>
+                      <p className="text-[11px] font-semibold text-ink/65">{t('بطاقة أو محفظة إلكترونية', 'Card or mobile wallet')}</p>
+                    </div>
+                  </button>
+                </div>
               </div>
 
               {/* Additional Notes */}
               <div>
-                <label className="block text-[12px] font-black uppercase text-ink/80 mb-1.5">
+                <label className="mb-1.5 block text-[12px] font-black uppercase text-ink/80">
                   {t('ملاحظات إضافية للتوصيل (اختياري)', 'Additional Notes (Optional)')}
                 </label>
                 <textarea
@@ -952,15 +1010,11 @@ export default function CheckoutPage() {
                   className="w-full rounded-xl border hairline bg-cream/20 px-3.5 py-2.5 text-[13.5px] font-medium text-ink placeholder:text-ink/40 focus:outline-none focus:ring-2 focus:ring-baladi-yellow"
                 />
               </div>
-
             </form>
-
           </div>
 
           {/* ── RIGHT: ORDER SUMMARY CARD (5 cols) ───────────── */}
-          <div className="lg:col-span-5 rounded-[32px] border hairline bg-white p-6 sm:p-7 shadow-sm sticky top-28 text-start">
-            
-            {/* Header */}
+          <div className="sticky top-28 rounded-[32px] border hairline bg-white p-6 text-start shadow-sm sm:p-7 lg:col-span-5">
             <div className="flex items-center gap-2.5 border-b hairline pb-4">
               <div className="grid h-9 w-9 place-items-center rounded-xl bg-baladi-yellow/20 text-baladi-ink">
                 <ShoppingBag className="h-5 w-5" />
@@ -974,23 +1028,81 @@ export default function CheckoutPage() {
             </div>
 
             {/* Products Mini List */}
-            <div className="my-4 max-h-60 overflow-y-auto space-y-3 pe-1">
-              {lines.map((l) => (
-                <div key={l.id} className="flex items-center gap-3 rounded-2xl bg-cream/40 p-2.5 border hairline">
-                  <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-white p-1">
-                    <img src={l.product.image} alt="" className="h-full w-auto object-contain" />
+            <div className="my-4 max-h-60 space-y-3 overflow-y-auto pe-1">
+              {items.map((item) => {
+                const matchedProduct = catalogProducts.find((p) => p.id === item.product_id);
+                const species = matchedProduct?.species ?? 'cat';
+                const imgSrc = resolveProductImage(item.image ?? matchedProduct?.image, species);
+                return (
+                  <div key={item.id} className="flex items-center gap-3 rounded-2xl border hairline bg-cream/40 p-2.5">
+                    <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-white p-1">
+                      <img
+                        src={imgSrc}
+                        alt={item.name}
+                        className="h-full w-auto object-contain"
+                        onError={(e) => {
+                          e.currentTarget.src = getProductFallbackImage(species);
+                        }}
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-black text-ink">{item.name}</p>
+                      <p className="text-[11px] font-semibold text-ink/70">
+                        {item.quantity} × {egp(item.price, lang)}
+                      </p>
+                    </div>
+                    <span className="text-xs font-black text-ink">
+                      {egp(item.total || item.quantity * item.price, lang)}
+                    </span>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-black text-ink">{l.product.name[lang]}</p>
-                    <p className="text-[11px] font-semibold text-ink/70">
-                      {l.qty} × {egp(l.product.price, lang)} · {l.product.weight}
-                    </p>
-                  </div>
-                  <span className="text-xs font-black text-ink">
-                    {egp(l.qty * l.product.price, lang)}
+                );
+              })}
+            </div>
+
+            {/* Coupon Code Validation Box */}
+            <div className="my-4 border-t hairline pt-4">
+              <label className="mb-1.5 flex items-center gap-1.5 text-[11.5px] font-black uppercase text-ink/75">
+                <Tag className="h-3.5 w-3.5 text-baladi-red" />
+                <span>{t('كود الخصم', 'Promo / Coupon Code')}</span>
+              </label>
+              {appliedCoupon ? (
+                <div className="flex items-center justify-between rounded-xl border border-baladi-green/30 bg-baladi-green/10 px-3 py-2 text-xs font-black text-baladi-green">
+                  <span>
+                    {appliedCoupon.code} (-{egp(appliedCoupon.discount, lang)})
                   </span>
+                  <button
+                    type="button"
+                    onClick={handleRemoveCoupon}
+                    className="text-ink/60 hover:text-baladi-red"
+                    aria-label={t('إزالة الكوبون', 'Remove coupon')}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
-              ))}
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    dir="ltr"
+                    value={couponInput}
+                    onChange={(e) => {
+                      setCouponInput(e.target.value);
+                      if (couponError) setCouponError(null);
+                    }}
+                    placeholder="WELCOME10"
+                    className="flex-1 rounded-xl border hairline bg-cream/30 px-3 py-2 text-xs font-bold uppercase text-ink placeholder:text-ink/40 focus:outline-none focus:ring-2 focus:ring-baladi-yellow"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleApplyCoupon()}
+                    disabled={couponLoading || !couponInput.trim()}
+                    className="rounded-xl bg-ink px-4 py-2 text-xs font-black text-white transition-opacity hover:opacity-90 disabled:opacity-45"
+                  >
+                    {couponLoading ? '...' : t('تطبيق', 'Apply')}
+                  </button>
+                </div>
+              )}
+              {couponError && <p className="mt-1.5 text-[11px] font-bold text-baladi-red">{couponError}</p>}
             </div>
 
             {/* Subtotal & Shipping breakdown */}
@@ -999,11 +1111,20 @@ export default function CheckoutPage() {
                 <span>{t('المجموع الفرعي للطلب', 'Subtotal')}</span>
                 <span>{egp(subtotal, lang)}</span>
               </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-baladi-green">
+                  <span>{t('خصم الكوبون', 'Coupon Discount')}</span>
+                  <span>-{egp(discountAmount, lang)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-ink/80">
                 <span>
-                  {t('مصاريف الشحن', 'Shipping')} ({EGYPT_GOVERNORATES[govIndex][lang]})
+                  {t('مصاريف الشحن', 'Shipping')}
+                  {activeGov ? ` (${lang === 'ar' ? activeGov.name_ar || activeGov.name : activeGov.name_en || activeGov.name})` : ''}
                 </span>
-                <span>{egp(shippingFee, lang)}</span>
+                <span className={isFreeShipping ? 'font-black text-baladi-green' : ''}>
+                  {isFreeShipping ? t('مجاني', 'Free') : egp(shippingFee, lang)}
+                </span>
               </div>
             </div>
 
@@ -1013,10 +1134,13 @@ export default function CheckoutPage() {
               <span className="text-baladi-red">{egp(grandTotal, lang)}</span>
             </div>
 
-            {/* Cash on delivery notice */}
-            <div className="mt-4 flex items-center gap-2.5 rounded-2xl bg-baladi-green/10 p-3 text-xs font-bold text-baladi-green border border-baladi-green/20">
+            <div className="mt-4 flex items-center gap-2.5 rounded-2xl border border-baladi-green/20 bg-baladi-green/10 p-3 text-xs font-bold text-baladi-green">
               <ShieldCheck className="h-5 w-5 shrink-0" />
-              <span>{t('الدفع نقداً أو بمحفظة كاش عند الاستلام', 'Cash or mobile wallet on delivery')}</span>
+              <span>
+                {paymentMethod === 'online'
+                  ? t('سيتم تسجيل طلبك للدفع الإلكتروني بأمان', 'Order will be registered for online payment')
+                  : t('الدفع نقداً أو بمحفظة كاش عند الاستلام', 'Cash or mobile wallet on delivery')}
+              </span>
             </div>
 
             {/* Submit Action */}
@@ -1025,7 +1149,7 @@ export default function CheckoutPage() {
                 type="submit"
                 form="checkout-form"
                 disabled={isSubmitting || gracePeriodActive}
-                className={`btn btn-ink relative overflow-hidden w-full py-4 text-base font-black shadow-lg hover:shadow-xl transition-all disabled:transform-none disabled:cursor-not-allowed ${
+                className={`btn btn-ink relative w-full overflow-hidden py-4 text-base font-black shadow-lg transition-all hover:shadow-xl disabled:transform-none disabled:cursor-not-allowed ${
                   isSubmitting ? 'opacity-60' : ''
                 }`}
               >
@@ -1043,7 +1167,7 @@ export default function CheckoutPage() {
                   </span>
                 ) : gracePeriodActive ? (
                   <span className="relative z-10 inline-flex items-center gap-2 tabular-nums">
-                    <Timer className="h-4 w-4 animate-pulse shrink-0" />
+                    <Timer className="h-4 w-4 shrink-0 animate-pulse" />
                     <span>{t(`جاري التأكيد · ${displayGraceSeconds} ث`, `Confirming · ${displayGraceSeconds}s`)}</span>
                   </span>
                 ) : (
@@ -1054,8 +1178,8 @@ export default function CheckoutPage() {
                 )}
               </button>
 
-              <div className="mt-4 text-center space-y-1">
-                <p className="text-[11.5px] font-medium text-ink/70 italic">
+              <div className="mt-4 space-y-1 text-center">
+                <p className="text-[11.5px] font-medium italic text-ink/70">
                   {t('شكراً لاختيارك طعام بلدي ❤️', 'Thank you for choosing Baladi ❤️')}
                 </p>
                 <p className="flex items-center justify-center gap-1.5 text-[11px] font-bold text-ink/75">
@@ -1064,11 +1188,8 @@ export default function CheckoutPage() {
                 </p>
               </div>
             </div>
-
           </div>
-
         </div>
-
       </div>
 
       <ZigZagBand color="#FBBB21" height={20} className="opacity-60" />

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { Menu, Search, ShoppingBag, X, Globe2, User as UserIcon } from 'lucide-react';
+import { Menu, Search, ShoppingBag, X, Globe2, User as UserIcon, Bell } from 'lucide-react';
 import { useLang } from '../../lib/lang';
 import { useCart, cartCount } from '../../store/cart';
 import { useAuth } from '../../store/auth';
-import { Mark, ZigZagBand, SpeciesAvatar } from '../brand/Ornaments';
+import { Mark, ZigZagBand, BaladiDuoEmblem } from '../brand/Ornaments';
 import { cn } from '../../lib/utils';
 import SearchModal from './SearchModal';
 
@@ -14,10 +14,10 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [menu, setMenu] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const lines = useCart((s) => s.lines);
+  const items = useCart((s) => s.items);
   const open = useCart((s) => s.open);
-  const count = cartCount(lines);
-  const { user, isAuthenticated, logout } = useAuth();
+  const count = cartCount(items);
+  const { user, isAuthenticated, unreadNotifications, logout } = useAuth();
 
   const isHome = pathname === '/';
   const transparent = isHome && !scrolled;
@@ -36,6 +36,7 @@ export default function Header() {
     { to: '/cats', label: t('قطط', 'Cats') },
     { to: '/dogs', label: t('كلاب', 'Dogs') },
     { to: '/story', label: t('قصتنا', 'Our story') },
+    { to: '/track', label: t('تتبع طلبك', 'Track order') },
     { to: '/cart', label: t('السلة', 'Cart') },
   ];
 
@@ -57,7 +58,7 @@ export default function Header() {
           </Link>
 
           <nav className="hidden items-center gap-1 lg:flex">
-            {links.slice(0, 4).map((l) => (
+            {links.slice(0, 5).map((l) => (
               <NavLink
                 key={l.to}
                 to={l.to}
@@ -89,7 +90,6 @@ export default function Header() {
               {lang === 'ar' ? 'EN' : 'AR'}
             </button>
 
-            {/* REAL SEARCH BUTTON: Opens instant search modal & links to /search */}
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
@@ -106,7 +106,25 @@ export default function Header() {
               </span>
             </button>
 
-            {/* REAL USER ACCOUNT / LOGIN BUTTON: Links to /profile if logged in, /login if not */}
+            {isAuthenticated && (
+              <Link
+                to="/profile?tab=notifications"
+                className={cn(
+                  'relative rounded-full p-2 transition-colors',
+                  transparent ? 'text-white hover:bg-white/15' : 'text-ink hover:bg-ink/5'
+                )}
+                title={t('الإشعارات', 'Notifications')}
+                aria-label={t('الإشعارات', 'Notifications')}
+              >
+                <Bell className="h-[18px] w-[18px]" />
+                {unreadNotifications > 0 && (
+                  <span className="absolute -top-0.5 start-0 grid h-[17px] min-w-[17px] place-items-center rounded-full bg-baladi-yellow px-1 text-[10px] font-black text-ink">
+                    {unreadNotifications}
+                  </span>
+                )}
+              </Link>
+            )}
+
             <Link
               to={isAuthenticated ? '/profile' : '/login'}
               className={cn(
@@ -119,9 +137,9 @@ export default function Header() {
               {isAuthenticated && user ? (
                 <div className="flex items-center gap-1.5">
                   <span className="grid h-6 w-6 place-items-center rounded-full bg-baladi-yellow text-ink shadow-sm">
-                    <SpeciesAvatar avatar={user.avatar} species={user.preferredSpecies} size={15} color="#23254F" />
+                    <BaladiDuoEmblem size={14} color="#23254F" />
                   </span>
-                  <span className="hidden font-black md:inline-block max-w-[75px] truncate">
+                  <span className="hidden font-black md:inline-block max-w-[85px] truncate">
                     {user.name.split(' ')[0]}
                   </span>
                 </div>
@@ -161,7 +179,6 @@ export default function Header() {
       </div>
       {!transparent && <ZigZagBand height={9} weight={1.5} color="#E84249" />}
 
-      {/* Render instant search modal */}
       <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
 
       {menu && (
@@ -175,7 +192,6 @@ export default function Header() {
               <button onClick={() => setMenu(false)} aria-label={t('إغلاق', 'Close')}><X className="h-6 w-6" /></button>
             </div>
 
-            {/* Mobile Search Button */}
             <button
               type="button"
               onClick={() => {
@@ -188,13 +204,12 @@ export default function Header() {
               <span>{t('ابحث في منتجات المتجر...', 'Search store products...')}</span>
             </button>
 
-            {/* Mobile User Section */}
             <div className="mb-6 rounded-2xl border hairline bg-white p-4 shadow-soft">
               {isAuthenticated && user ? (
                 <div>
                   <div className="flex items-center gap-3">
                     <span className="grid h-10 w-10 place-items-center rounded-2xl bg-baladi-yellow text-ink">
-                      <SpeciesAvatar avatar={user.avatar} species={user.preferredSpecies} size={22} color="#23254F" />
+                      <BaladiDuoEmblem size={20} color="#23254F" />
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-black text-ink">{user.name}</p>
@@ -211,7 +226,7 @@ export default function Header() {
                     <button
                       type="button"
                       onClick={() => {
-                        logout();
+                        void logout();
                         setMenu(false);
                       }}
                       className="rounded-full border hairline px-3 py-1.5 text-xs font-bold text-baladi-red hover:bg-red-50"
@@ -223,19 +238,13 @@ export default function Header() {
               ) : (
                 <div className="text-center">
                   <p className="text-xs font-bold text-ink/75 mb-3">
-                    {t('سجّل دخولك لمتابعة طلباتك وأليفك', 'Sign in to track orders & pets')}
+                    {t('سجّل دخولك لمتابعة طلباتك والمفضلة', 'Sign in to track your orders & favorites')}
                   </p>
                   <div className="flex gap-2">
-                    <Link
-                      to="/login"
-                      className="btn btn-ink !py-2 text-xs font-black flex-1"
-                    >
+                    <Link to="/login" className="btn btn-ink !py-2 text-xs font-black flex-1">
                       {t('تسجيل الدخول', 'Sign In')}
                     </Link>
-                    <Link
-                      to="/register"
-                      className="btn btn-ghost !py-2 text-xs font-black flex-1"
-                    >
+                    <Link to="/register" className="btn btn-ghost !py-2 text-xs font-black flex-1">
                       {t('حساب جديد', 'Register')}
                     </Link>
                   </div>
@@ -250,8 +259,13 @@ export default function Header() {
                 </Link>
               ))}
               {isAuthenticated && (
-                <Link to="/profile" className="rounded-2xl px-4 py-3 text-base font-extrabold text-baladi-red hover:bg-ink/5">
-                  {t('حسابي وكلمة المرور', 'Account & Security')}
+                <Link to="/profile?tab=notifications" className="flex items-center justify-between rounded-2xl px-4 py-3 text-base font-extrabold text-baladi-red hover:bg-ink/5">
+                  <span>{t('الإشعارات', 'Notifications')}</span>
+                  {unreadNotifications > 0 && (
+                    <span className="rounded-full bg-baladi-yellow px-2 py-0.5 text-xs font-black text-ink">
+                      {unreadNotifications}
+                    </span>
+                  )}
                 </Link>
               )}
             </div>

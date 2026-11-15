@@ -1,19 +1,17 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Search, X, SlidersHorizontal, Sparkles, ArrowRight } from 'lucide-react';
-import { PRODUCTS, type Product } from '../data/catalog';
+import { Search, X, Sparkles } from 'lucide-react';
+import {
+  catalogApi,
+  extractErrorMessage,
+  routeToSpecies,
+  type ApiProduct,
+  type ProductQueryParams,
+} from '../lib/api';
 import { useLang } from '../lib/lang';
 import ProductCard from '../components/sections/ProductCard';
 import Reveal from '../components/ui/Reveal';
-import { Mark, ZigZagBand, BaladiCatEmblem, BaladiDogEmblem, BaladiDuoEmblem } from '../components/brand/Ornaments';
-
-const QUICK_TAGS = [
-  { ar: 'طعام جاف للقطط', en: 'Cat dry food', query: 'قطط' },
-  { ar: 'طعام جاف للكلاب', en: 'Dog dry food', query: 'كلاب' },
-  { ar: 'كيتن وصغار', en: 'Kitten', query: 'كيتن' },
-  { ar: 'دجاج', en: 'Chicken', query: 'دجاج' },
-  { ar: 'مكافآت ومضغ', en: 'Treats & Chews', query: 'مضغ' },
-];
+import { ZigZagBand, BaladiCatEmblem, BaladiDogEmblem, BaladiDuoEmblem } from '../components/brand/Ornaments';
 
 export default function SearchPage() {
   const { t, lang } = useLang();
@@ -22,7 +20,14 @@ export default function SearchPage() {
 
   const [query, setQuery] = useState(initialQuery);
   const [speciesFilter, setSpeciesFilter] = useState<'all' | 'cats' | 'dogs'>('all');
-  const [sortBy, setSortBy] = useState<'featured' | 'price-asc' | 'price-desc' | 'rating'>('featured');
+  const [sortBy, setSortBy] = useState<NonNullable<ProductQueryParams['sort']>>('newest');
+  const [results, setResults] = useState<ApiProduct[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setQuery(searchParams.get('q') || '');
+  }, [searchParams]);
 
   const handleQueryChange = (val: string) => {
     setQuery(val);
@@ -33,48 +38,49 @@ export default function SearchPage() {
     }
   };
 
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
+  useEffect(() => {
+    let active = true;
+    setIsLoading(true);
+    setError(null);
 
-    return PRODUCTS.filter((p) => {
-      // Species filter
-      if (speciesFilter !== 'all' && p.species !== speciesFilter) {
-        return false;
-      }
+    const timer = window.setTimeout(() => {
+      catalogApi
+        .listProducts(
+          {
+            q: query.trim() || undefined,
+            species: speciesFilter === 'all' ? undefined : routeToSpecies(speciesFilter),
+            sort: sortBy,
+            per_page: 50,
+          },
+          lang
+        )
+        .then((res) => {
+          if (active) setResults(res.data || []);
+        })
+        .catch((err) => {
+          if (active) {
+            setResults([]);
+            setError(extractErrorMessage(err, t('تعذر تحميل نتائج البحث', 'Could not load search results')));
+          }
+        })
+        .finally(() => {
+          if (active) setIsLoading(false);
+        });
+    }, query.trim() ? 220 : 0);
 
-      // Query filter
-      if (!q) return true;
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [query, speciesFilter, sortBy, lang, t]);
 
-      const nameAr = p.name.ar.toLowerCase();
-      const nameEn = p.name.en.toLowerCase();
-      const flavorAr = p.flavor.ar.toLowerCase();
-      const flavorEn = p.flavor.en.toLowerCase();
-      const tagAr = p.tagline.ar.toLowerCase();
-      const tagEn = p.tagline.en.toLowerCase();
-      const descAr = p.description.ar.toLowerCase();
-      const descEn = p.description.en.toLowerCase();
-      const weight = p.weight.toLowerCase();
-      const speciesWord = p.species === 'cats' ? 'قطط قطة cat' : 'كلاب كلب dog';
-
-      return (
-        nameAr.includes(q) ||
-        nameEn.includes(q) ||
-        flavorAr.includes(q) ||
-        flavorEn.includes(q) ||
-        tagAr.includes(q) ||
-        tagEn.includes(q) ||
-        descAr.includes(q) ||
-        descEn.includes(q) ||
-        weight.includes(q) ||
-        speciesWord.includes(q)
-      );
-    }).sort((a, b) => {
-      if (sortBy === 'price-asc') return a.price - b.price;
-      if (sortBy === 'price-desc') return b.price - a.price;
-      if (sortBy === 'rating') return b.rating - a.rating;
-      return 0;
-    });
-  }, [query, speciesFilter, sortBy]);
+  const quickTags = [
+    { ar: 'طعام جاف للقطط', en: 'Cat dry food', query: lang === 'ar' ? 'قطط' : 'cat' },
+    { ar: 'طعام جاف للكلاب', en: 'Dog dry food', query: lang === 'ar' ? 'كلاب' : 'dog' },
+    { ar: 'دجاج', en: 'Chicken', query: lang === 'ar' ? 'دجاج' : 'chicken' },
+    { ar: 'تونة', en: 'Tuna', query: lang === 'ar' ? 'تونة' : 'tuna' },
+    { ar: 'تريتس ومكافآت', en: 'Treats', query: lang === 'ar' ? 'مكافآت' : 'treats' },
+  ];
 
   return (
     <div className="min-h-screen bg-cream pt-[68px] md:pt-[84px]">
@@ -88,8 +94,8 @@ export default function SearchPage() {
           </h1>
           <p className="mx-auto mt-3 max-w-lg text-[15px] font-medium text-cream/90">
             {t(
-              'ابحث بالاسم، نوع الأكل، الحجم أو نوع الحيوان (قطط أو كلاب).',
-              'Search by product name, food type, pack size, or animal species.'
+              'ابحث بالاسم، نوع الأكل، أو نوع الحيوان (قطط أو كلاب).',
+              'Search by product name, food type, or animal species.'
             )}
           </p>
 
@@ -125,14 +131,14 @@ export default function SearchPage() {
                 <Sparkles className="h-3.5 w-3.5" />
                 {t('كلمات شائعة:', 'Popular:')}
               </span>
-              {QUICK_TAGS.map((tag) => (
+              {quickTags.map((tag) => (
                 <button
                   key={tag.en}
                   type="button"
                   onClick={() => handleQueryChange(tag.query)}
                   className="rounded-full border border-cream/30 bg-cream/10 px-3.5 py-1 text-xs font-bold text-cream transition-colors hover:bg-baladi-yellow hover:text-ink"
                 >
-                  {tag[lang]}
+                  {lang === 'ar' ? tag.ar : tag.en}
                 </button>
               ))}
             </div>
@@ -142,7 +148,6 @@ export default function SearchPage() {
 
       {/* ── FILTERS & RESULTS ───────────────────────────────────── */}
       <div className="u-container py-10 md:py-14">
-        {/* Filter controls */}
         <div className="mb-8 flex flex-col gap-4 rounded-[26px] border hairline bg-white p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             {[
@@ -188,10 +193,10 @@ export default function SearchPage() {
               onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
               className="rounded-xl border hairline bg-cream/50 px-3 py-1.5 text-xs font-black text-ink focus:border-baladi-red focus:outline-none"
             >
-              <option value="featured">{t('المميز أولاً', 'Featured')}</option>
-              <option value="price-asc">{t('السعر: من الأقل للأعلى', 'Price: Low to High')}</option>
-              <option value="price-desc">{t('السعر: من الأعلى للأقل', 'Price: High to Low')}</option>
-              <option value="rating">{t('الأعلى تقييماً', 'Highest Rated')}</option>
+              <option value="newest">{t('الأحدث أولاً', 'Newest')}</option>
+              <option value="price_asc">{t('السعر: من الأقل للأعلى', 'Price: Low to High')}</option>
+              <option value="price_desc">{t('السعر: من الأعلى للأقل', 'Price: High to Low')}</option>
+              <option value="name">{t('حسب الاسم', 'Name A–Z')}</option>
             </select>
           </div>
         </div>
@@ -199,7 +204,9 @@ export default function SearchPage() {
         {/* Results Count */}
         <div className="mb-6 flex items-center justify-between">
           <p className="text-sm font-black text-ink">
-            {results.length > 0 ? (
+            {isLoading ? (
+              t('جاري البحث...', 'Searching...')
+            ) : results.length > 0 ? (
               <>
                 {t('تم العثور على', 'Found')}{' '}
                 <span className="text-baladi-red">{results.length}</span>{' '}
@@ -207,7 +214,7 @@ export default function SearchPage() {
                 {query && (
                   <span>
                     {' '}
-                    {t('للبحث عن', 'for')}: "{query}"
+                    {t('للبحث عن', 'for')}: &quot;{query}&quot;
                   </span>
                 )}
               </>
@@ -217,9 +224,25 @@ export default function SearchPage() {
           </p>
         </div>
 
+        {error && (
+          <div className="mb-6 rounded-2xl border border-baladi-red/30 bg-baladi-red/10 px-4 py-3 text-xs font-extrabold text-baladi-red">
+            {error}
+          </div>
+        )}
+
         {/* Product Cards Grid */}
-        {results.length > 0 ? (
-          <div className="grid grid-cols-2 gap-4 md:gap-6 lg:grid-cols-4">
+        {isLoading ? (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:gap-6 lg:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-80 animate-pulse rounded-[24px] border hairline bg-white p-5">
+                <div className="h-44 rounded-2xl bg-ink/[0.06]" />
+                <div className="mt-4 h-3 w-1/2 rounded-full bg-ink/[0.08]" />
+                <div className="mt-2 h-4 w-3/4 rounded-full bg-ink/[0.08]" />
+              </div>
+            ))}
+          </div>
+        ) : results.length > 0 ? (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:gap-6 lg:grid-cols-4">
             {results.map((product, idx) => (
               <Reveal key={product.id} delay={idx * 0.04}>
                 <ProductCard product={product} />
@@ -244,7 +267,7 @@ export default function SearchPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setQuery('');
+                  handleQueryChange('');
                   setSpeciesFilter('all');
                 }}
                 className="btn btn-ink"

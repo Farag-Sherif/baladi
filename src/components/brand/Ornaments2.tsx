@@ -1,6 +1,5 @@
 import { useId } from 'react';
 import { cn } from '../../lib/utils';
-import { BaladiCatEmblem, BaladiDogEmblem } from './Ornaments';
 
 /** Vertical lightning strip — the guideline's side border device. */
 export function Thunder({ color = '#FBBB21', height = 24, className }: { color?: string; height?: number; className?: string }) {
@@ -18,7 +17,7 @@ export function Thunder({ color = '#FBBB21', height = 24, className }: { color?:
   );
 }
 
-/** Big low-opacity geometric Baladi animal emblem used as a page background object. */
+/** Authentic low-opacity Baladi Cat / Dog emblem watermark from brand guideline. */
 export function GhostAnimal({
   species,
   src,
@@ -27,7 +26,6 @@ export function GhostAnimal({
   opacity = 0.14,
   flip = false,
   size = 360,
-  strokeWidth = 3.2,
 }: {
   species?: 'cats' | 'dogs';
   src?: string;
@@ -39,15 +37,21 @@ export function GhostAnimal({
   strokeWidth?: number;
 }) {
   const isCat = species ? species === 'cats' : Boolean(src?.includes('cat'));
-  const Emblem = isCat ? BaladiCatEmblem : BaladiDogEmblem;
+  const emblemSrc = isCat ? '/brand/cat-emblem.png' : '/brand/dog-emblem.png';
 
   return (
-    <span
+    <img
+      src={emblemSrc}
+      alt=""
       aria-hidden="true"
-      className={cn('pointer-events-none absolute aspect-square select-none', className)}
-      style={{ opacity, transform: flip ? 'scaleX(-1)' : undefined }}
-    >
-      <Emblem size={size} color={color} strokeWidth={strokeWidth} tight={false} className="h-full w-full" />
-    </span>
+      className={cn('pointer-events-none absolute select-none object-contain', className)}
+      style={{
+        opacity,
+        transform: flip ? 'scaleX(-1)' : undefined,
+        maxWidth: size,
+        maxHeight: size,
+      }}
+      draggable={false}
+    />
   );
 }

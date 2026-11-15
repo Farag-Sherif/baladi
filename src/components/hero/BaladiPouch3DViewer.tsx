@@ -507,7 +507,7 @@ export default function BaladiPouch3DViewer({
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-ink/40 backdrop-blur-xs rounded-3xl">
           <Loader2 className="h-9 w-9 animate-spin text-baladi-yellow" />
           <span className="text-xs font-black text-white tracking-wider">
-            {isRtl ? 'جاري تحميل مجسم الـ 3D...' : 'Loading 3D model...'}
+            {isRtl ? 'جاري تحميل المجسم ثلاثي الأبعاد...' : 'Loading 3D model...'}
           </span>
         </div>
       )}

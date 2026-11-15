@@ -6,12 +6,12 @@ import { useLang } from '../lib/lang';
 import { Mark, ZigZagBand, DiamondBadge } from '../components/brand/Ornaments';
 
 export default function LoginPage() {
-  const { t, lang, dir } = useLang();
+  const { t } = useLang();
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated } = useAuth();
+  const { login } = useAuth();
 
-  const [identifier, setIdentifier] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
@@ -19,14 +19,13 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // If already logged in, show logged-in prompt or allow redirect
   const from = (location.state as { from?: string })?.from || '/profile';
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!identifier.trim()) {
-      setError(t('برجاء إدخال البريد الإلكتروني أو رقم الهاتف', 'Please enter your email or phone number'));
+    if (!email.trim() || !email.includes('@')) {
+      setError(t('برجاء إدخال بريد إلكتروني صحيح', 'Please enter a valid email address'));
       return;
     }
     if (!password) {
@@ -35,16 +34,16 @@ export default function LoginPage() {
     }
 
     setLoading(true);
-    const res = await login(identifier, password);
+    const res = await login(email.trim(), password);
     setLoading(false);
 
     if (res.success) {
       setSuccess(true);
       setTimeout(() => {
         navigate(from, { replace: true });
-      }, 700);
+      }, 450);
     } else {
-      setError(res.error || t('حدث خطأ أثناء تسجيل الدخول', 'Error signing in'));
+      setError(res.error || t('بيانات الدخول غير صحيحة', 'Invalid credentials'));
     }
   };
 
@@ -61,14 +60,13 @@ export default function LoginPage() {
             {t('تسجيل الدخول', 'Sign In')}
           </h1>
           <p className="mt-3 text-[15px] font-medium text-cream/90">
-            {t('تابع طلباتك وأكل قططك وكلابك البلدى من مكان واحد.', 'Track your orders and your pets’ nourishment in one place.')}
+            {t('تابع طلباتك وعناوينك والمفضلة من مكان واحد.', 'Track your orders, addresses, and favorites in one place.')}
           </p>
         </div>
       </div>
 
       <div className="u-container -mt-6 pb-20">
         <div className="mx-auto max-w-md rounded-[32px] border hairline bg-white p-6 shadow-soft md:p-8">
-          {/* Top navigation tabs between Sign In & Register */}
           <div className="mb-6 grid grid-cols-2 gap-2 rounded-2xl bg-cream p-1.5 text-center text-sm font-black">
             <span className="rounded-xl bg-ink py-2.5 text-white shadow-sm">
               {t('تسجيل الدخول', 'Sign In')}
@@ -98,19 +96,20 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-[12.5px] font-extrabold uppercase tracking-wider text-ink/80">
-                {t('البريد الإلكتروني أو رقم الهاتف', 'Email or Mobile Number')}
+                {t('البريد الإلكتروني', 'Email Address')}
               </label>
               <div className="relative mt-2">
                 <span className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3.5 text-ink/50">
                   <Mail className="h-4 w-4" />
                 </span>
                 <input
-                  type="text"
+                  type="email"
                   dir="ltr"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder={lang === 'ar' ? 'name@example.com أو 010xxxxxxxx' : 'name@example.com or 010xxxxxxxx'}
-                  className="w-full rounded-2xl border hairline bg-cream/50 py-3 ps-10 pe-4 text-sm font-bold text-ink placeholder:text-ink/40 focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className="w-full rounded-2xl border hairline bg-cream/50 py-3 pe-4 ps-10 text-sm font-bold text-ink placeholder:text-ink/40 focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
                 />
               </div>
             </div>
@@ -134,16 +133,17 @@ export default function LoginPage() {
                 <input
                   type={showPass ? 'text' : 'password'}
                   dir="ltr"
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full rounded-2xl border hairline bg-cream/50 py-3 ps-10 pe-11 text-sm font-bold text-ink placeholder:text-ink/40 focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
+                  className="w-full rounded-2xl border hairline bg-cream/50 py-3 pe-11 ps-10 text-sm font-bold text-ink placeholder:text-ink/40 focus:border-baladi-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-baladi-red/20"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPass(!showPass)}
                   className="absolute inset-y-0 end-0 flex items-center pe-3.5 text-ink/50 hover:text-ink"
-                  aria-label={showPass ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                  aria-label={showPass ? t('إخفاء كلمة المرور', 'Hide password') : t('إظهار كلمة المرور', 'Show password')}
                 >
                   {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>

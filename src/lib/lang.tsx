@@ -21,17 +21,30 @@ export function LangProvider({ children }: { children: ReactNode }) {
 
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
 
+  const applyDomLang = (next: Lang) => {
+    const nextDir = next === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = next;
+    document.documentElement.dir = nextDir;
+    try { localStorage.setItem('baladi-lang', next); } catch { /* ignore */ }
+  };
+
   useEffect(() => {
-    document.documentElement.lang = lang;
-    document.documentElement.dir = dir;
-    try { localStorage.setItem('baladi-lang', lang); } catch { /* ignore */ }
+    applyDomLang(lang);
   }, [lang, dir]);
 
   const value = useMemo<LangCtx>(() => ({
     lang,
     dir,
-    setLang,
-    toggle: () => setLang((l) => (l === 'ar' ? 'en' : 'ar')),
+    setLang: (next: Lang) => {
+      applyDomLang(next);
+      setLang(next);
+    },
+    toggle: () =>
+      setLang((l) => {
+        const next = l === 'ar' ? 'en' : 'ar';
+        applyDomLang(next);
+        return next;
+      }),
     t: (ar: string, en: string) => (lang === 'ar' ? ar : en),
   }), [lang, dir]);
 
