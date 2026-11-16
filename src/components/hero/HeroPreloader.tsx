@@ -73,7 +73,7 @@ export default function HeroPreloader({
 
         {/* Slogan */}
         <p className="mt-1 text-[11px] sm:text-xs font-bold text-cream/65">
-          {t('اللى بياكل عدل.. بيعيش أحسن · تغذية مصرية ١٠٠٪', 'Well fed lives a better life · 100% Egyptian')}
+          {t('اللى بياكل صح.. بيعيش أحسن · تغذية مصرية ١٠٠٪', 'Well fed lives a better life · 100% Egyptian')}
         </p>
 
         {/* Progress Bar Container */}

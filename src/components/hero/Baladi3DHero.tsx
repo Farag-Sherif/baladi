@@ -57,9 +57,9 @@ const PACKS: Record<WorldMode, PackData> = {
     tagEn: 'COMPLETE DRY FOOD FOR CATS & DOGS',
     nameAr: 'تشكيلة بلدي المتكاملة',
     nameEn: 'Baladi Duo Nutrition',
-    subtitleAr: 'اللى بياكل عدل.. بيعيش أحسن',
+    subtitleAr: 'اللى بياكل صح.. بيعيش أحسن',
     subtitleEn: 'Well fed lives a better life',
-    descAr: 'تغذية مصرية ١٠٠٪ متكاملة للقطط والكلاب البلدية — دجاج حقيقي، فيتامينات ومعادن أساسية، وبدون أي مكسبات طعم صناعية. جودة تثق فيها وسعر في متناول اليد.',
+    descAr: 'تغذية مصرية ١٠٠٪ متكاملة للقطط والكلاب البلدي — دجاج حقيقي، فيتامينات ومعادن أساسية، وبدون أي مكسبات طعم صناعية. جودة تثق فيها وسعر في متناول اليد.',
     descEn: '100% Egyptian complete pet food for Baladi cats and dogs — real chicken, essential vitamins & minerals, zero artificial additives. Accessible premium quality.',
     image: '/brand/pouch-duo.png',
     accentColor: '#FBBB21', // baladi-yellow
@@ -111,7 +111,7 @@ const PACKS: Record<WorldMode, PackData> = {
   },
   cats: {
     mode: 'cats',
-    tagAr: 'طعام جاف كامل للقطط البلدية',
+    tagAr: 'طعام جاف كامل للقطط البلدي',
     tagEn: 'COMPLETE DRY FOOD FOR CATS',
     nameAr: 'عالم القطط',
     nameEn: 'Baladi Cats World',
@@ -169,7 +169,7 @@ const PACKS: Record<WorldMode, PackData> = {
   },
   dogs: {
     mode: 'dogs',
-    tagAr: 'طعام جاف كامل للكلاب البلدية',
+    tagAr: 'طعام جاف كامل للكلاب البلدي',
     tagEn: 'COMPLETE DRY FOOD FOR DOGS',
     nameAr: 'عالم الكلاب',
     nameEn: 'Baladi Dogs World',
@@ -480,7 +480,7 @@ export default function Baladi3DHero() {
                 transition={{ duration: 0.3 }}
                 className="text-[clamp(1.2rem,2.4vw,1.9rem)] font-extrabold text-baladi-yellow leading-[1.35]"
               >
-                {isRtl ? 'اللى بياكل عدل.. بيعيش أحسن' : 'Well fed lives a better life.'}
+                {isRtl ? 'اللى بياكل صح.. بيعيش أحسن' : 'Well fed lives a better life.'}
               </motion.p>
             </div>
 
