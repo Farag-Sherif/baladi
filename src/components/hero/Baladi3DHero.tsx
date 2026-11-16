@@ -17,8 +17,6 @@ import { Thunder } from '../brand/Ornaments2';
 import { ZigZagBand, BaladiCatEmblem, BaladiDogEmblem, BaladiDuoEmblem, BaladiGridBackground, DiamondBadge } from '../brand/Ornaments';
 import { cn } from '../../lib/utils';
 import BaladiPouch3DViewer from './BaladiPouch3DViewer';
-import HeroPreloader from './HeroPreloader';
-import { getIs3DPreloaded, setIs3DPreloaded } from '../../lib/3dPreloader';
 
 type WorldMode = 'both' | 'cats' | 'dogs';
 
@@ -236,55 +234,9 @@ export default function Baladi3DHero() {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // ── 3D ASSET PRELOAD TRACKING ──
-  const [is3DReady, setIs3DReady] = useState(() => getIs3DPreloaded());
-  const [preloadProgress, setPreloadProgress] = useState({
-    loaded: 0,
-    total: 10,
-    percent: 0,
-  });
-
-  const handle3DProgress = (loaded: number, total: number, percent: number) => {
-    setPreloadProgress({ loaded, total, percent });
-  };
-
-  const handle3DReady = () => {
-    setPreloadProgress((prev) => ({ ...prev, percent: 100, loaded: prev.total || 10 }));
-    setTimeout(() => {
-      setIs3DPreloaded(true);
-      setIs3DReady(true);
-    }, 380);
-  };
-
-  const handleSkip = () => {
-    setIs3DPreloaded(true);
-    setIs3DReady(true);
-  };
-
-  // Fallback safety timeout so site never stays permanently blocked
-  useEffect(() => {
-    if (is3DReady) return;
-    const timer = setTimeout(() => {
-      setIs3DPreloaded(true);
-      setIs3DReady(true);
-    }, 12000);
-    return () => clearTimeout(timer);
-  }, [is3DReady]);
-
-  // Lock scroll while preloader is active to prevent awkward scrolling before reveal
-  useEffect(() => {
-    if (!is3DReady) {
-      const prevOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.overflow = prevOverflow;
-      };
-    }
-  }, [is3DReady]);
-
   // ── AUTO-CYCLE TIMER (Transitions between both, cats, dogs every 3 seconds) ──
   useEffect(() => {
-    if (isPaused || !is3DReady) return;
+    if (isPaused) return;
 
     const timer = setInterval(() => {
       setMode((current) => {
@@ -294,7 +246,7 @@ export default function Baladi3DHero() {
     }, 3200);
 
     return () => clearInterval(timer);
-  }, [isPaused, is3DReady]);
+  }, [isPaused]);
 
   // Background 3D Floating Particles
   useEffect(() => {
@@ -360,24 +312,11 @@ export default function Baladi3DHero() {
   }, []);
 
   return (
-    <>
-      {/* ── 3D PRODUCT ASSET PRELOADER ── */}
-      <AnimatePresence>
-        {!is3DReady && (
-          <HeroPreloader
-            percent={preloadProgress.percent}
-            loaded={preloadProgress.loaded}
-            total={preloadProgress.total}
-            onSkip={handleSkip}
-          />
-        )}
-      </AnimatePresence>
-
-      <section
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-        className="relative min-h-[94vh] lg:min-h-screen w-full overflow-hidden bg-ink pt-24 pb-14 text-cream flex flex-col justify-between"
-      >
+    <section
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      className="relative min-h-[94vh] lg:min-h-screen w-full overflow-hidden bg-ink pt-24 pb-14 text-cream flex flex-col justify-between"
+    >
       {/* ── 3D AMBIENT ENVIRONMENT & GLOW LIGHTS ──────────────── */}
       <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 z-0 h-full w-full opacity-60" />
 
@@ -586,12 +525,7 @@ export default function Baladi3DHero() {
             />
 
             {/* REAL THREE.JS 3D GLB POUCH VIEWER (Direct 3D Rendering) */}
-            <BaladiPouch3DViewer
-              mode={mode}
-              isPaused={isPaused || !is3DReady}
-              onProgress={handle3DProgress}
-              onReady={handle3DReady}
-            />
+            <BaladiPouch3DViewer mode={mode} isPaused={isPaused} />
 
             {/* FLOATING HOLOGRAPHIC BADGES */}
             <AnimatePresence mode="wait">
@@ -706,6 +640,5 @@ export default function Baladi3DHero() {
       </div>
 
     </section>
-    </>
   );
 }
