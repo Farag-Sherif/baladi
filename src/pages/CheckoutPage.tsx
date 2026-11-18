@@ -1014,17 +1014,21 @@ export default function CheckoutPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setPaymentMethod('online')}
-                    className={`flex items-center gap-3 rounded-2xl border p-3.5 text-start transition-all ${
-                      paymentMethod === 'online'
-                        ? 'border-baladi-green bg-baladi-green/10 text-ink shadow-xs'
-                        : 'border-ink/15 bg-white text-ink/75 hover:border-ink/30'
-                    }`}
+                    disabled
+                    aria-disabled="true"
+                    className="relative flex items-center gap-3 rounded-2xl border border-dashed border-ink/20 bg-cream/30 p-3.5 text-start opacity-60 cursor-not-allowed select-none"
                   >
-                    <CreditCard className={`h-5 w-5 shrink-0 ${paymentMethod === 'online' ? 'text-baladi-green' : 'text-ink/50'}`} />
-                    <div>
-                      <p className="text-xs font-black text-ink">{t('دفع إلكتروني', 'Online Payment')}</p>
-                      <p className="text-[11px] font-semibold text-ink/65">{t('بطاقة أو محفظة إلكترونية', 'Card or mobile wallet')}</p>
+                    <CreditCard className="h-5 w-5 shrink-0 text-ink/40" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-black text-ink/70">{t('دفع إلكتروني', 'Online Payment')}</p>
+                        <span className="rounded-md bg-ink/10 px-1.5 py-0.5 text-[10px] font-extrabold text-ink/70">
+                          {t('قريباً', 'Coming Soon')}
+                        </span>
+                      </div>
+                      <p className="text-[11px] font-semibold text-ink/50">
+                        {t('غير متوفر حالياً — بطاقة أو محفظة إلكترونية', 'Currently unavailable — Card or wallet')}
+                      </p>
                     </div>
                   </button>
                 </div>
