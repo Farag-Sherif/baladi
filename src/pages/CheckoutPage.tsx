@@ -41,6 +41,7 @@ import {
 import { useLang } from '../lib/lang';
 import { egp } from '../lib/utils';
 import { ZigZagBand, BaladiCatEmblem, BaladiDogEmblem } from '../components/brand/Ornaments';
+import ShippingZoneSelect from '../components/ui/ShippingZoneSelect';
 import { PORTER_CONFIG } from '../lib/shipping';
 
 const GRACE_PERIOD_SECONDS = 10;
@@ -109,6 +110,13 @@ export default function CheckoutPage() {
   const isGraceActiveRef = useRef(false);
   const isFinalizingRef = useRef(false);
 
+  // Live Shipping quote from Panther Express / backend
+  const [liveShippingQuote, setLiveShippingQuote] = useState<{
+    cost: number;
+    source: string;
+  } | null>(null);
+  const [isLoadingShipping, setIsLoadingShipping] = useState(false);
+
   // Set default governorate once loaded
   useEffect(() => {
     if (!governorateId && governorates.length > 0) {
@@ -163,10 +171,42 @@ export default function CheckoutPage() {
     ? governorates.find((g) => g.id === activeSavedAddress.governorate_id) ?? governorates[0]
     : governorates.find((g) => g.id === governorateId) ?? governorates[0];
 
+  // Fetch live delivery quote from backend (Panther Express / Delivery Cost API)
+  useEffect(() => {
+    if (!activeGov?.id) return;
+    let active = true;
+    setIsLoadingShipping(true);
+    checkoutApi
+      .getDeliveryCost(activeGov.id, subtotal, lang)
+      .then((res) => {
+        if (active && res.data) {
+          setLiveShippingQuote({
+            cost: typeof res.data.shipping_cost === 'number' ? res.data.shipping_cost : activeGov.shipping_cost,
+            source: res.data.source || 'panther',
+          });
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setLiveShippingQuote({
+            cost: activeGov.shipping_cost,
+            source: activeGov.source || 'panther',
+          });
+        }
+      })
+      .finally(() => {
+        if (active) setIsLoadingShipping(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [activeGov?.id, subtotal, lang]);
+
   const freeThreshold = settings?.free_shipping_threshold ?? 0;
   const isFreeShipping = freeThreshold > 0 && subtotal >= freeThreshold;
-  const shippingFee =
-    items.length > 0 && activeGov ? (isFreeShipping ? 0 : activeGov.shipping_cost) : 0;
+  const resolvedCost = liveShippingQuote !== null ? liveShippingQuote.cost : (activeGov?.shipping_cost ?? 0);
+  const shippingFee = items.length > 0 && activeGov ? (isFreeShipping ? 0 : resolvedCost) : 0;
   const discountAmount = appliedCoupon?.discount ?? 0;
   const grandTotal = Math.max(0, subtotal - discountAmount + shippingFee);
 
@@ -222,7 +262,7 @@ export default function CheckoutPage() {
       errs.phone = isRtl ? 'رقم الهاتف غير صحيح' : 'Invalid phone number';
     }
     if (!activeGov) {
-      errs.governorate = isRtl ? 'اختر المحافظة' : 'Select a governorate';
+      errs.governorate = isRtl ? 'اختر منطقة الشحن والتوصيل' : 'Select a shipping area';
     }
     if (!address.trim()) {
       errs.address = isRtl ? 'العنوان بالتفصيل مطلوب' : 'Detailed address is required';
@@ -457,7 +497,7 @@ export default function CheckoutPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-ink">
-                    {t('بورتر للشحن السريع', 'Porter Express Egypt')}
+                    {t('بانثر إكسبريس للشحن السريع', 'Panther Express Egypt')}
                   </h3>
                   <p className="text-[11px] font-bold text-baladi-green">
                     {t('حالة الطلب الحالية:', 'Current Status:')} {placedOrder.status_label}
@@ -909,24 +949,17 @@ export default function CheckoutPage() {
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-[12px] font-black uppercase text-ink/80">
-                      {t('المحافظة *', 'Governorate *')}
-                    </label>
-                    <select
-                      value={activeGov?.id ?? ''}
-                      onChange={(e) => {
-                        setGovernorateId(Number(e.target.value));
+                    <ShippingZoneSelect
+                      zones={governorates}
+                      selectedId={activeGov?.id ?? governorateId}
+                      onChange={(id) => {
+                        setGovernorateId(id);
                         if (errors.governorate) setErrors((p) => ({ ...p, governorate: '' }));
                       }}
-                      className="w-full rounded-xl border hairline bg-cream/20 px-3.5 py-3 text-[14px] font-bold text-ink focus:outline-none focus:ring-2 focus:ring-baladi-yellow"
-                    >
-                      {governorates.map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {lang === 'ar' ? g.name_ar || g.name : g.name_en || g.name} — {egp(g.shipping_cost, lang)}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.governorate && <p className="mt-1 text-[11px] font-bold text-red-600">{errors.governorate}</p>}
+                      label={t('منطقة الشحن والتوصيل *', 'Shipping Area / Zone *')}
+                      placeholder={t('ابحث بالاسم واختر منطقة التوصيل...', 'Search & select shipping area...')}
+                      error={errors.governorate}
+                    />
                   </div>
 
                   <div>
@@ -1118,12 +1151,21 @@ export default function CheckoutPage() {
                 </div>
               )}
               <div className="flex justify-between text-ink/80">
-                <span>
-                  {t('مصاريف الشحن', 'Shipping')}
-                  {activeGov ? ` (${lang === 'ar' ? activeGov.name_ar || activeGov.name : activeGov.name_en || activeGov.name})` : ''}
+                <span className="flex items-center gap-1.5">
+                  <Truck className="h-3.5 w-3.5 text-baladi-red" />
+                  <span>
+                    {t('الشحن والتوصيل', 'Shipping')}
+                    {activeGov ? ` (${lang === 'ar' ? activeGov.name_ar || activeGov.name : activeGov.name_en || activeGov.name})` : ''}
+                  </span>
                 </span>
                 <span className={isFreeShipping ? 'font-black text-baladi-green' : ''}>
-                  {isFreeShipping ? t('مجاني', 'Free') : egp(shippingFee, lang)}
+                  {isLoadingShipping ? (
+                    <span className="text-[11px] text-ink/40">...</span>
+                  ) : isFreeShipping ? (
+                    t('مجاني', 'Free')
+                  ) : (
+                    egp(shippingFee, lang)
+                  )}
                 </span>
               </div>
             </div>

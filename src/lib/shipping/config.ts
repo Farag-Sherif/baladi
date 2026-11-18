@@ -60,15 +60,15 @@ const isLiveModeEnabled = (): boolean => {
 };
 
 export const PORTER_CONFIG: ShippingConfig = {
-  carrierName: 'Porter Express Egypt (بورتر للشحن السريع)',
+  carrierName: 'Panther Express Egypt (بانثر إكسبريس للشحن السريع)',
   carrierCode: 'porter',
   // Look for Vite env or fallback to pre-configured sandbox
-  apiKey: getEnv('VITE_PORTER_API_KEY') || 'BLD_PORTER_SANDBOX_KEY_2026',
-  apiUrl: stripTrailingSlash(getEnv('VITE_PORTER_API_URL') || 'https://api.porterexpress.eg/v1'),
-  trackingBaseUrl: stripTrailingSlash(getEnv('VITE_PORTER_TRACKING_BASE_URL') || 'https://track.porterexpress.eg'),
-  merchantId: getEnv('VITE_PORTER_MERCHANT_ID') || 'GPF-BALADI-STORE',
+  apiKey: getEnv('VITE_PORTER_API_KEY') || getEnv('VITE_PANTHER_API_KEY') || 'BLD_PANTHER_SANDBOX_KEY_2026',
+  apiUrl: stripTrailingSlash(getEnv('VITE_PORTER_API_URL') || getEnv('VITE_PANTHER_API_URL') || 'https://api.porterexpress.eg/v1'),
+  trackingBaseUrl: stripTrailingSlash(getEnv('VITE_PORTER_TRACKING_BASE_URL') || getEnv('VITE_PANTHER_TRACKING_BASE_URL') || 'https://track.porterexpress.eg'),
+  merchantId: getEnv('VITE_PORTER_MERCHANT_ID') || getEnv('VITE_PANTHER_MERCHANT_ID') || 'GPF-BALADI-STORE',
   isSandbox: !isLiveModeEnabled(),
-  webhookSecret: getEnv('VITE_PORTER_WEBHOOK_SECRET') || 'whsec_baladi_porter_test',
+  webhookSecret: getEnv('VITE_PORTER_WEBHOOK_SECRET') || getEnv('VITE_PANTHER_WEBHOOK_KEY') || 'whsec_baladi_panther_test',
   timeoutMs: 10000,
   warehouse: {
     name: getEnv('VITE_PORTER_WAREHOUSE_NAME') || 'مستودع بلدي — شركة الجيزة لطعام الحيوانات (GPF)',
@@ -78,6 +78,8 @@ export const PORTER_CONFIG: ShippingConfig = {
     governorate: getEnv('VITE_PORTER_WAREHOUSE_GOVERNORATE') || 'الجيزة',
   },
 };
+
+export const PANTHER_CONFIG = PORTER_CONFIG;
 
 /**
  * Verifies whether live Porter Express credentials are active and ready for REST dispatch.

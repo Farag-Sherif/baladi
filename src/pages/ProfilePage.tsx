@@ -24,6 +24,7 @@ import {
 import { useAuth } from '../store/auth';
 import { useCart } from '../store/cart';
 import { useStorefront } from '../store/storefront';
+import ShippingZoneSelect from '../components/ui/ShippingZoneSelect';
 import {
   catalogApi,
   getCategoryTitle,
@@ -626,18 +627,13 @@ export default function ProfilePage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-black text-ink/75">{t('المحافظة', 'Governorate')} *</label>
-                        <select
-                          value={addrGovId}
-                          onChange={(e) => setAddrGovId(Number(e.target.value))}
-                          className="mt-1.5 w-full rounded-xl border hairline bg-cream/40 px-3.5 py-2.5 text-sm font-bold text-ink focus:outline-none"
-                        >
-                          {governorates.map((g) => (
-                            <option key={g.id} value={g.id}>
-                              {lang === 'ar' ? g.name_ar || g.name : g.name_en || g.name}
-                            </option>
-                          ))}
-                        </select>
+                        <ShippingZoneSelect
+                          zones={governorates}
+                          selectedId={addrGovId}
+                          onChange={(id) => setAddrGovId(id)}
+                          label={t('منطقة الشحن والتوصيل *', 'Shipping Area / Zone *')}
+                          placeholder={t('ابحث واختر منطقة التوصيل...', 'Search & select area...')}
+                        />
                       </div>
                     </div>
 

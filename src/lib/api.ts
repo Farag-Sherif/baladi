@@ -77,6 +77,7 @@ export interface ApiSettings {
   facebook: string;
   shipping_flat: number;
   free_shipping_threshold: number;
+  shipping_mode?: string;
 }
 
 export interface ApiCartItem {
@@ -105,6 +106,16 @@ export interface ApiGovernorate {
   name_ar: string;
   name_en: string;
   shipping_cost: number;
+  source?: 'panther' | 'governorate' | string;
+}
+
+export interface ApiDeliveryCost {
+  sector_id?: number;
+  governorate_id?: number;
+  name: string;
+  shipping_cost: number;
+  currency?: string;
+  source: 'panther' | 'governorate' | string;
 }
 
 export interface ApiCouponValidation {
@@ -322,7 +333,7 @@ export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Pr
     headers.Authorization = `Bearer ${token}`;
   }
 
-  if (sendCartToken && !token) {
+  if (sendCartToken) {
     const cartToken = getStoredCartToken();
     if (cartToken) {
       headers['X-Cart-Token'] = cartToken;
@@ -464,6 +475,15 @@ export const checkoutApi = {
       body: { code, subtotal },
       lang,
     }),
+  getDeliveryCost: (governorateId: number, subtotal?: number, lang?: Lang) =>
+    apiRequest<{ data: ApiDeliveryCost }>('/checkout/delivery-cost', {
+      method: 'POST',
+      body: {
+        governorate_id: governorateId,
+        ...(subtotal !== undefined ? { subtotal } : {}),
+      },
+      lang,
+    }),
   placeOrder: (
     payload: CheckoutGuestPayload | CheckoutSavedAddressPayload,
     lang?: Lang
@@ -491,6 +511,23 @@ export const authApi = {
     }),
   login: (payload: { email: string; password: string }) =>
     apiRequest<{ data: { token: string; customer: ApiCustomer } }>('/auth/login', {
+      method: 'POST',
+      body: payload,
+      sendAuthToken: false,
+    }),
+  forgotPassword: (email: string) =>
+    apiRequest<{ message: string; data?: { email: string } }>('/auth/forgot-password', {
+      method: 'POST',
+      body: { email },
+      sendAuthToken: false,
+    }),
+  resetPassword: (payload: {
+    email: string;
+    token: string;
+    password: string;
+    password_confirmation: string;
+  }) =>
+    apiRequest<{ message: string }>('/auth/reset-password', {
       method: 'POST',
       body: payload,
       sendAuthToken: false,

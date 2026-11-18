@@ -43,6 +43,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ForgotPasswordPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/account" element={<ProfilePage />} />
               <Route path="/track" element={<TrackOrderPage />} />

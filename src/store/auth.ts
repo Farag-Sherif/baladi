@@ -51,6 +51,13 @@ interface AuthState {
     password: string;
     password_confirmation: string;
   }) => Promise<AuthActionResult>;
+  forgotPassword: (email: string) => Promise<{ success: boolean; message?: string; error?: string }>;
+  resetPassword: (payload: {
+    email: string;
+    token: string;
+    password: string;
+    password_confirmation: string;
+  }) => Promise<{ success: boolean; message?: string; error?: string; errors?: Record<string, string[]> }>;
   logout: () => Promise<void>;
   updateProfile: (payload: {
     name?: string;
@@ -214,6 +221,43 @@ export const useAuth = create<AuthState>((set, get) => {
         return {
           success: false,
           error: extractErrorMessage(err, localizedFallback('تعذر إنشاء الحساب', 'Unable to create account')),
+          errors: err instanceof ApiError ? err.errors : undefined,
+        };
+      }
+    },
+
+    forgotPassword: async (email: string) => {
+      try {
+        const res = await authApi.forgotPassword(email.trim());
+        return {
+          success: true,
+          message: res.message || localizedFallback('تم إرسال كود الاستعادة بنجاح', 'Reset code sent successfully'),
+        };
+      } catch (err) {
+        return {
+          success: false,
+          error: extractErrorMessage(err, localizedFallback('تعذر إرسال كود الاستعادة', 'Failed to send reset code')),
+        };
+      }
+    },
+
+    resetPassword: async (payload) => {
+      try {
+        const res = await authApi.resetPassword({
+          email: payload.email.trim(),
+          token: payload.token.trim(),
+          password: payload.password,
+          password_confirmation: payload.password_confirmation,
+        });
+        get().clearSession();
+        return {
+          success: true,
+          message: res.message || localizedFallback('تم تغيير كلمة المرور بنجاح', 'Password reset successfully'),
+        };
+      } catch (err) {
+        return {
+          success: false,
+          error: extractErrorMessage(err, localizedFallback('كود التحقق غير صحيح أو منتهي الصلاحية', 'Reset code is invalid or expired')),
           errors: err instanceof ApiError ? err.errors : undefined,
         };
       }
