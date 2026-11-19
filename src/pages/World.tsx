@@ -104,7 +104,7 @@ export default function World({ species }: { species: Species }) {
       </section>
 
       {/* ── SUB-CATEGORY NAV ───────────────────────────────────── */}
-      <section className="sticky top-[68px] z-30 border-b hairline bg-cream/95 backdrop-blur-xl md:top-[84px]">
+      <section className="sticky top-[68px] z-30 border-b hairline bg-white/95 backdrop-blur-xl md:top-[84px]">
         <div className="u-container flex items-center gap-2 overflow-x-auto py-3 no-scrollbar">
           <Link
             to={`/${species}`}
@@ -134,7 +134,7 @@ export default function World({ species }: { species: Species }) {
 
       {/* subcategory cards */}
       {!activeSub && subs.length > 0 && (
-        <section className="bg-cream pt-14">
+        <section className="bg-white pt-14">
           <div className="u-container grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {subs.map((c, i) => {
               const p = worldProducts.find((prod) => prod.category?.slug === c.slug);
@@ -176,7 +176,7 @@ export default function World({ species }: { species: Species }) {
       )}
 
       {/* ── PRODUCT GRID ───────────────────────────────────────── */}
-      <section className="bg-cream py-14 md:py-20">
+      <section className="bg-white py-14 md:py-20 border-t hairline">
         <div className="u-container">
           <div className="mb-8 flex items-end justify-between gap-4">
             <div>
@@ -222,7 +222,7 @@ export default function World({ species }: { species: Species }) {
       </section>
 
       {/* ── FAQ ────────────────────────────────────────────────── */}
-      <section className="bg-cream py-16 md:py-20">
+      <section className="bg-white py-16 md:py-20 border-t hairline">
         <div className="u-container grid gap-10 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
             <p className={`t-eyebrow ${accent}`}>{t('أسئلة شائعة', 'QUESTIONS')}</p>

@@ -475,9 +475,9 @@ export default function ProductPage() {
           </div>
 
           <aside className="space-y-4">
-            <div className="rounded-[26px] bg-ink p-6 text-cream">
-              <p className="t-eyebrow text-baladi-yellow">{t('توصيل وشحن', 'SHIPPING INFO')}</p>
-              <p className="mt-3 text-[13px] font-medium leading-relaxed text-cream/90">
+            <div className="rounded-[26px] border hairline bg-slate-50 p-6 text-ink shadow-xs">
+              <p className="t-eyebrow text-baladi-red">{t('توصيل وشحن', 'SHIPPING INFO')}</p>
+              <p className="mt-3 text-[13px] font-medium leading-relaxed text-ink/80">
                 {settings?.free_shipping_threshold
                   ? t(
                       `الشحن الأساسي ${settings.shipping_flat} ج.م، ومجاني للطلبات فوق ${settings.free_shipping_threshold} ج.م حسب المحافظة.`,
@@ -489,8 +489,8 @@ export default function ProductPage() {
                     )}
               </p>
               <div className="mt-5 flex items-center gap-2">
-                <DiamondBadge size={26} accent="#FBBB21" />
-                <span className="text-[11px] font-bold text-cream/80">{t('مُصنَّع فى مصر', 'Made in Egypt')}</span>
+                <DiamondBadge size={26} accent="#E84249" />
+                <span className="text-[11px] font-bold text-ink/65">{t('مُصنَّع فى مصر', 'Made in Egypt')}</span>
               </div>
             </div>
             <div className={`rounded-[26px] p-6 ${isCat ? 'bg-baladi-red/10' : 'bg-baladi-green/10'}`}>

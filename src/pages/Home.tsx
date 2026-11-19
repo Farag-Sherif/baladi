@@ -34,7 +34,7 @@ export default function Home() {
       <Baladi3DHero />
 
       {/* ── TWO WORLDS ─────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-cream py-20 md:py-28">
+      <section className="relative overflow-hidden bg-white py-20 md:py-28 border-t hairline">
         <div className="u-container">
           <Reveal className="mb-12 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
             <div>
@@ -115,44 +115,44 @@ export default function Home() {
       </section>
 
       {/* ── BRAND STORY PLATE ──────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-ink py-20 text-cream md:py-28">
-        <BaladiGridBackground opacity={0.08} />
-        <ZigZagBand color="#FBBB21" height={24} className="absolute inset-x-0 top-0 opacity-70" />
-        <LeafStem className="absolute end-6 top-16 hidden opacity-25 md:block" color="#FBF6EE" height={180} />
-        <GhostAnimal species="dogs" src="/brand/dog-emblem.png" className="-bottom-16 -start-20 h-[70%] w-auto" opacity={0.07} />
+      <section className="relative overflow-hidden bg-white py-20 text-ink md:py-28 border-t hairline">
+        <BaladiGridBackground opacity={0.03} />
+        <ZigZagBand color="#E84249" height={20} className="absolute inset-x-0 top-0 opacity-40" />
+        <LeafStem className="absolute end-6 top-16 hidden opacity-15 md:block" color="#23254F" height={180} />
+        <GhostAnimal species="dogs" src="/brand/dog-emblem.png" className="-bottom-16 -start-20 h-[70%] w-auto" opacity={0.04} />
 
         <div className="u-container relative">
           <div className="grid items-center gap-14 lg:grid-cols-[1.05fr_0.95fr]">
             <Reveal>
-              <p className="t-eyebrow text-baladi-yellow">{t('القصة', 'THE STORY')}</p>
-              <h2 className="t-display mt-4 text-[clamp(2rem,4.4vw,3.4rem)]">
+              <p className="t-eyebrow text-baladi-red">{t('القصة', 'THE STORY')}</p>
+              <h2 className="t-display mt-4 text-[clamp(2rem,4.4vw,3.4rem)] text-ink">
                 {t('الحيوانات البلدى', 'Baladi animals')}<br />
-                <span className="text-baladi-yellow">{t('تستاهل أكل كامل', 'deserve complete food')}</span>
+                <span className="text-baladi-red">{t('تستاهل أكل كامل', 'deserve complete food')}</span>
               </h2>
               {isLoadingContent && story.length === 0 ? (
                 <div className="mt-6 max-w-lg space-y-3">
-                  <div className="h-4 w-11/12 animate-pulse rounded-full bg-cream/15" />
-                  <div className="h-4 w-4/5 animate-pulse rounded-full bg-cream/15" />
-                  <div className="h-4 w-3/4 animate-pulse rounded-full bg-cream/10" />
+                  <div className="h-4 w-11/12 animate-pulse rounded-full bg-ink/10" />
+                  <div className="h-4 w-4/5 animate-pulse rounded-full bg-ink/10" />
+                  <div className="h-4 w-3/4 animate-pulse rounded-full bg-ink/10" />
                 </div>
               ) : story.length > 0 ? (
                 <div className="mt-6 space-y-4">
                   {story.slice(0, 2).map((sec, idx) => (
-                    <p key={idx} className="max-w-lg text-[15px] font-medium leading-relaxed text-cream/90">
+                    <p key={idx} className="max-w-lg text-[15px] font-medium leading-relaxed text-ink/85">
                       {sec.body}
                     </p>
                   ))}
                 </div>
               ) : null}
               <div className="mt-8 flex flex-wrap gap-3">
-                <Link to="/story" className="btn btn-yellow">{t('اقرأ القصة كاملة', 'Read the full story')}</Link>
-                <Link to="/cats" className="btn btn-outline-light">{t('ابدأ التسوق', 'Shop now')}</Link>
+                <Link to="/story" className="btn btn-red">{t('اقرأ القصة كاملة', 'Read the full story')}</Link>
+                <Link to="/cats" className="btn btn-ghost">{t('ابدأ التسوق', 'Shop now')}</Link>
               </div>
             </Reveal>
 
             <Reveal delay={0.12}>
               <div className="relative">
-                <div className="absolute -inset-4 rounded-[42px] border border-cream/10" />
+                <div className="absolute -inset-4 rounded-[42px] border hairline" />
                 <div className="relative grid grid-cols-2 gap-3">
                   {[
                     { icon: HeartHandshake, a: 'إطعام الشارع', b: 'Street feeding', n: '01' },
@@ -160,10 +160,10 @@ export default function Home() {
                     { icon: Package, a: 'أكياس محكمة', b: 'Sealed packs', n: '03' },
                     { icon: Truck, a: 'توصيل سريع', b: 'Fast delivery', n: '04' },
                   ].map((c) => (
-                    <div key={c.n} className="rounded-3xl border border-cream/12 bg-cream/[0.04] p-5">
-                      <c.icon className="h-5 w-5 text-baladi-yellow" strokeWidth={1.8} />
-                      <p className="mt-6 text-[13.5px] font-extrabold leading-snug text-white">{t(c.a, c.b)}</p>
-                      <p className="mt-1 text-[11px] font-black tracking-[0.2em] text-cream/70">{c.n}</p>
+                    <div key={c.n} className="rounded-3xl border hairline bg-slate-50/80 p-5 shadow-xs">
+                      <c.icon className="h-5 w-5 text-baladi-red" strokeWidth={1.8} />
+                      <p className="mt-6 text-[13.5px] font-extrabold leading-snug text-ink">{t(c.a, c.b)}</p>
+                      <p className="mt-1 text-[11px] font-black tracking-[0.2em] text-ink/50">{c.n}</p>
                     </div>
                   ))}
                 </div>
@@ -174,7 +174,7 @@ export default function Home() {
       </section>
 
       {/* ── BESTSELLERS ─────────────────────────────────────────── */}
-      <section className="relative bg-cream py-20 md:py-28">
+      <section className="relative bg-white py-20 md:py-28 border-t hairline">
         <div className="u-container">
           <Reveal className="mb-10 flex items-end justify-between gap-4">
             <div>
@@ -222,7 +222,7 @@ export default function Home() {
                 <div className="mt-6 space-y-2">
                   {isLoadingCatalog && items.length === 0 ? (
                     [0, 1, 2].map((i) => (
-                      <div key={i} className="flex items-center gap-4 rounded-2xl bg-cream/70 p-2.5">
+                      <div key={i} className="flex items-center gap-4 rounded-2xl bg-slate-50 border hairline p-2.5">
                         <div className="h-14 w-14 animate-pulse rounded-xl bg-white" />
                         <div className="flex-1 space-y-2">
                           <div className="h-3.5 w-2/3 animate-pulse rounded-full bg-ink/10" />
@@ -235,7 +235,7 @@ export default function Home() {
                       <Link
                         key={p.id}
                         to={`/product/${p.slug}`}
-                        className="flex items-center gap-4 rounded-2xl bg-cream/70 p-2.5 transition-colors hover:bg-cream"
+                        className="flex items-center gap-4 rounded-2xl bg-slate-50 border hairline p-2.5 transition-colors hover:bg-slate-100"
                       >
                         <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-white p-1">
                           <img

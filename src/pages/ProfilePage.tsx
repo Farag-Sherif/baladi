@@ -120,8 +120,8 @@ export default function ProfilePage() {
 
   if (isHydrating && !user) {
     return (
-      <div className="grid min-h-[80vh] place-items-center bg-cream pt-[68px] md:pt-[84px]">
-        <div className="flex items-center gap-3 rounded-2xl bg-white px-6 py-4 shadow-soft">
+      <div className="grid min-h-[80vh] place-items-center bg-white pt-[68px] md:pt-[84px]">
+        <div className="flex items-center gap-3 rounded-2xl bg-white border hairline px-6 py-4 shadow-sm">
           <span className="h-5 w-5 animate-spin rounded-full border-2 border-baladi-red border-t-transparent" />
           <span className="text-sm font-black text-ink">{t('جاري تحميل حسابك...', 'Loading your account...')}</span>
         </div>
@@ -131,7 +131,7 @@ export default function ProfilePage() {
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="min-h-[80vh] bg-cream pt-[68px] md:pt-[84px]">
+      <div className="min-h-[80vh] bg-white pt-[68px] md:pt-[84px]">
         <div className="u-container py-20 text-center">
           <div className="mx-auto mb-6 grid h-20 w-20 place-items-center rounded-full bg-baladi-yellow/20 text-baladi-ink">
             <UserIcon className="h-10 w-10 text-baladi-red" />
@@ -321,24 +321,24 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-cream pt-[68px] md:pt-[84px]">
+    <div className="min-h-screen bg-white pt-[68px] md:pt-[84px]">
       {/* ── PROFILE HEADER BANNER ──────────────────────────────── */}
-      <section className="relative overflow-hidden bg-ink py-10 text-cream md:py-14">
-        <ZigZagBand color="#FBBB21" height={20} className="absolute inset-x-0 top-0 opacity-80" />
+      <section className="relative overflow-hidden bg-white border-b hairline py-10 text-ink md:py-14">
+        <ZigZagBand color="#E84249" height={16} className="absolute inset-x-0 top-0 opacity-40" />
         <div className="u-container relative">
           <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-start">
-              <div className="grid h-20 w-20 place-items-center rounded-3xl border-2 border-baladi-yellow bg-baladi-yellow text-ink shadow-lift overflow-hidden shrink-0">
+              <div className="grid h-20 w-20 place-items-center rounded-3xl border border-ink/10 bg-slate-100 text-ink shadow-sm overflow-hidden shrink-0">
                 <BaladiDuoEmblem size={28} color="#23254F" />
               </div>
               <div>
                 <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                  <h1 className="text-2xl font-black text-white md:text-3xl">{user.name}</h1>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-baladi-yellow px-2.5 py-0.5 text-xs font-black text-ink">
+                  <h1 className="text-2xl font-black text-ink md:text-3xl">{user.name}</h1>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-baladi-red/10 px-2.5 py-0.5 text-xs font-black text-baladi-red">
                     {t('عضو بلدى', 'Baladi Member')}
                   </span>
                 </div>
-                <p className="mt-1 text-sm font-medium text-cream/80" dir="ltr">
+                <p className="mt-1 text-sm font-medium text-ink/70" dir="ltr">
                   {user.email} · {user.phone}
                 </p>
               </div>
@@ -349,7 +349,7 @@ export default function ProfilePage() {
               onClick={() => {
                 void logout().then(() => navigate('/'));
               }}
-              className="inline-flex items-center gap-2 rounded-full border border-cream/25 bg-cream/10 px-4 py-2 text-xs font-black text-white transition-colors hover:bg-baladi-red hover:border-baladi-red"
+              className="inline-flex items-center gap-2 rounded-full border border-ink/20 bg-slate-50 px-4 py-2 text-xs font-black text-ink transition-colors hover:bg-baladi-red hover:text-white hover:border-baladi-red"
             >
               <LogOut className="h-3.5 w-3.5" />
               <span>{t('تسجيل الخروج', 'Sign Out')}</span>

@@ -473,7 +473,7 @@ export default function CheckoutPage() {
     const whatsappDigits = (settings?.whatsapp || settings?.store_phone || '201000000000').replace(/[^\d]/g, '');
 
     return (
-      <div className="flex min-h-[85vh] items-center justify-center bg-cream px-4 py-16 pt-[68px] md:pt-[84px]">
+      <div className="flex min-h-[85vh] items-center justify-center bg-white px-4 py-16 pt-[68px] md:pt-[84px]">
         <div className="w-full max-w-3xl rounded-[36px] border hairline bg-white p-6 text-center shadow-2xl sm:p-12">
           <div className="mx-auto mb-5 grid h-20 w-20 animate-bounce place-items-center rounded-full bg-baladi-green/15 text-baladi-green">
             <CheckCircle2 className="h-12 w-12" />
@@ -622,9 +622,9 @@ export default function CheckoutPage() {
   // ── EMPTY CART VIEW ─────────────────────────────────────────
   if (items.length === 0) {
     return (
-      <div className="flex min-h-[80vh] items-center justify-center bg-cream px-4 py-16 pt-[68px] md:pt-[84px]">
+      <div className="flex min-h-[80vh] items-center justify-center bg-white px-4 py-16 pt-[68px] md:pt-[84px]">
         <div className="w-full max-w-lg rounded-[32px] border hairline bg-white p-10 text-center shadow-md">
-          <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-cream text-ink/40">
+          <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-slate-100 text-ink/40">
             <ShoppingBag className="h-8 w-8" />
           </div>
           <h1 className="text-2xl font-black text-ink">{t('سلتك فارغة', 'Your bag is empty')}</h1>
@@ -648,7 +648,7 @@ export default function CheckoutPage() {
 
   // ── MAIN DEDICATED CHECKOUT PAGE ────────────────────────────
   return (
-    <div className="relative min-h-[90vh] bg-cream pb-16 pt-[68px] md:pt-[84px]">
+    <div className="relative min-h-[90vh] bg-white pb-16 pt-[68px] md:pt-[84px]">
       {/* ── 10-SECOND ORDER CONFIRMATION GRACE PERIOD MODAL ── */}
       {gracePeriodActive && pendingSnapshot && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/75 p-4 backdrop-blur-md animate-in fade-in duration-300">

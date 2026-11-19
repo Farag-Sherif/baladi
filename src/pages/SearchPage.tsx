@@ -83,16 +83,16 @@ export default function SearchPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-cream pt-[68px] md:pt-[84px]">
+    <div className="min-h-screen bg-white pt-[68px] md:pt-[84px]">
       {/* ── SEARCH HEADER ───────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-ink py-12 text-cream md:py-16">
-        <ZigZagBand color="#FBBB21" height={22} className="absolute inset-x-0 top-0 opacity-80" />
+      <section className="relative overflow-hidden bg-white border-b hairline py-12 text-ink md:py-16">
+        <ZigZagBand color="#E84249" height={16} className="absolute inset-x-0 top-0 opacity-40" />
         <div className="u-container relative text-center">
-          <p className="t-eyebrow text-baladi-yellow">{t('البحث في المتجر', 'STORE SEARCH')}</p>
-          <h1 className="t-display mt-3 text-[clamp(2rem,4.6vw,3.4rem)] text-white">
+          <p className="t-eyebrow text-baladi-red">{t('البحث في المتجر', 'STORE SEARCH')}</p>
+          <h1 className="t-display mt-3 text-[clamp(2rem,4.6vw,3.4rem)] text-ink">
             {t('ابحث عن أكل أليفك', 'Find Pet Nutrition')}
           </h1>
-          <p className="mx-auto mt-3 max-w-lg text-[15px] font-medium text-cream/90">
+          <p className="mx-auto mt-3 max-w-lg text-[15px] font-medium text-ink/80">
             {t(
               'ابحث بالاسم، نوع الأكل، أو نوع الحيوان (قطط أو كلاب).',
               'Search by product name, food type, or animal species.'
@@ -111,7 +111,7 @@ export default function SearchPage() {
                 value={query}
                 onChange={(e) => handleQueryChange(e.target.value)}
                 placeholder={lang === 'ar' ? 'ابحث باسم المنتج، دجاج، كيتن، كلاب بالغة...' : 'Search by product, chicken, kitten, adult...'}
-                className="w-full rounded-full border-2 border-baladi-yellow/70 bg-white py-4 ps-12 pe-12 text-base font-bold text-ink shadow-lift placeholder:text-ink/40 focus:border-baladi-yellow focus:outline-none focus:ring-4 focus:ring-baladi-yellow/20"
+                className="w-full rounded-full border-2 border-baladi-red/40 bg-white py-4 ps-12 pe-12 text-base font-bold text-ink shadow-sm placeholder:text-ink/40 focus:border-baladi-red focus:outline-none focus:ring-4 focus:ring-baladi-red/15"
               />
               {query && (
                 <button
@@ -127,7 +127,7 @@ export default function SearchPage() {
 
             {/* Quick search tags */}
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-              <span className="flex items-center gap-1 text-xs font-black text-baladi-yellow">
+              <span className="flex items-center gap-1 text-xs font-black text-baladi-red">
                 <Sparkles className="h-3.5 w-3.5" />
                 {t('كلمات شائعة:', 'Popular:')}
               </span>
@@ -136,7 +136,7 @@ export default function SearchPage() {
                   key={tag.en}
                   type="button"
                   onClick={() => handleQueryChange(tag.query)}
-                  className="rounded-full border border-cream/30 bg-cream/10 px-3.5 py-1 text-xs font-bold text-cream transition-colors hover:bg-baladi-yellow hover:text-ink"
+                  className="rounded-full border border-ink/15 bg-slate-50 px-3.5 py-1 text-xs font-bold text-ink/80 transition-colors hover:bg-baladi-red hover:text-white"
                 >
                   {lang === 'ar' ? tag.ar : tag.en}
                 </button>

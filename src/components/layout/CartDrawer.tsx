@@ -92,7 +92,7 @@ export default function CartDrawer() {
         aria-modal="true"
         aria-label={t('سلة المشتريات', 'Shopping bag')}
         className={cn(
-          'absolute inset-y-0 end-0 z-10 flex w-full max-w-md flex-col bg-cream text-ink shadow-2xl transition-transform duration-300 ease-out will-change-transform',
+          'absolute inset-y-0 end-0 z-10 flex w-full max-w-md flex-col bg-white text-ink border-s hairline shadow-2xl transition-transform duration-300 ease-out will-change-transform',
           isOpen
             ? 'pointer-events-auto translate-x-0'
             : isRtl

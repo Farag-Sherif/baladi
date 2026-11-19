@@ -573,7 +573,7 @@ export default function BaladiPouch3DViewer({
 
       {/* 3D Control Pill & Reset Button */}
       <div className="absolute bottom-2 inset-x-0 flex items-center justify-center gap-2 pointer-events-none">
-        <span className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-white/15 bg-ink/75 px-3 py-1 text-[11px] font-black text-cream backdrop-blur-md shadow-lg">
+        <span className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-ink/10 bg-white/90 px-3 py-1 text-[11px] font-black text-ink backdrop-blur-md shadow-md">
           <Rotate3d className="h-3.5 w-3.5 text-baladi-yellow" />
           <span>{isRtl ? 'اسحب لتدوير المجسم ٣٦٠°' : 'Drag to rotate 360°'}</span>
         </span>
@@ -581,7 +581,7 @@ export default function BaladiPouch3DViewer({
           <button
             type="button"
             onClick={handleResetRotation}
-            className="pointer-events-auto rounded-full border border-white/15 bg-ink/75 px-2.5 py-1 text-[10.5px] font-black text-baladi-yellow hover:bg-white/15 backdrop-blur-md transition-colors"
+            className="pointer-events-auto rounded-full border border-ink/10 bg-white/90 px-2.5 py-1 text-[10.5px] font-black text-baladi-red hover:bg-slate-100 backdrop-blur-md shadow-md transition-colors"
           >
             {isRtl ? 'إعادة ضبط' : 'Reset'}
           </button>

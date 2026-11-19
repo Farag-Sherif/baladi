@@ -77,15 +77,15 @@ export default function TrackOrderPage() {
   const stage = order ? getProgressStage(order.status) : 0;
 
   return (
-    <div className="min-h-screen bg-cream pt-[68px] md:pt-[84px]">
-      <section className="relative overflow-hidden bg-ink py-12 text-cream">
-        <ZigZagBand color="#FBBB21" height={20} className="absolute inset-x-0 top-0 opacity-80" />
+    <div className="min-h-screen bg-white pt-[68px] md:pt-[84px]">
+      <section className="relative overflow-hidden bg-white border-b hairline py-12 text-ink">
+        <ZigZagBand color="#E84249" height={16} className="absolute inset-x-0 top-0 opacity-40" />
         <div className="u-container relative text-center">
-          <p className="t-eyebrow text-baladi-yellow">{t('تتبع الشحنات', 'ORDER TRACKING')}</p>
-          <h1 className="t-display mt-2 text-[clamp(2rem,4.5vw,3.2rem)] text-white">
+          <p className="t-eyebrow text-baladi-red">{t('تتبع الشحنات', 'ORDER TRACKING')}</p>
+          <h1 className="t-display mt-2 text-[clamp(2rem,4.5vw,3.2rem)] text-ink">
             {t('تابع حالة طلبك', 'Track Your Order')}
           </h1>
-          <p className="mx-auto mt-3 max-w-lg text-[15px] font-medium text-cream/90">
+          <p className="mx-auto mt-3 max-w-lg text-[15px] font-medium text-ink/80">
             {t(
               'أدخل رقم الطلب للاطلاع على حالته وتفاصيل التوصيل مباشرة.',
               'Enter your order number to inspect live status and delivery details.'
@@ -94,7 +94,7 @@ export default function TrackOrderPage() {
         </div>
       </section>
 
-      <div className="u-container -mt-6 pb-20">
+      <div className="u-container py-10 pb-20">
         <div className="mx-auto max-w-2xl rounded-[32px] border hairline bg-white p-6 shadow-soft md:p-8">
           <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-[1fr_1fr_auto]">
             <div>

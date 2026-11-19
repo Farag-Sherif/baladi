@@ -18,23 +18,23 @@ export default function Story() {
   const heroIntro = story[0];
 
   return (
-    <div className="pt-[68px] md:pt-[84px]">
-      <section className="relative overflow-hidden bg-ink py-20 text-cream md:py-28">
-        <BaladiGridBackground opacity={0.09} />
-        <ZigZagBand color="#FBBB21" height={22} className="absolute inset-x-0 top-0 opacity-70" />
-        <GhostAnimal species="dogs" src="/brand/dog-emblem.png" className="-bottom-14 end-[-6%] h-[80%] w-auto" opacity={0.09} />
-        <LeafStem className="absolute start-6 top-24 hidden opacity-20 md:block" height={190} />
+    <div className="pt-[68px] md:pt-[84px] bg-white">
+      <section className="relative overflow-hidden bg-white border-b hairline py-20 text-ink md:py-28">
+        <BaladiGridBackground opacity={0.03} />
+        <ZigZagBand color="#E84249" height={16} className="absolute inset-x-0 top-0 opacity-40" />
+        <GhostAnimal species="dogs" src="/brand/dog-emblem.png" className="-bottom-14 end-[-6%] h-[80%] w-auto" opacity={0.05} />
+        <LeafStem className="absolute start-6 top-24 hidden opacity-15 md:block" color="#23254F" height={190} />
         <div className="u-container relative">
           <Reveal>
-            <p className="t-eyebrow text-baladi-yellow">{t('القصة', 'THE STORY')}</p>
-            <h1 className="t-display mt-4 max-w-3xl text-[clamp(2.2rem,5.6vw,4.4rem)]">
+            <p className="t-eyebrow text-baladi-red">{t('القصة', 'THE STORY')}</p>
+            <h1 className="t-display mt-4 max-w-3xl text-[clamp(2.2rem,5.6vw,4.4rem)] text-ink">
               {heroIntro ? (
                 heroIntro.title
               ) : (
                 <>
                   {t('عشان قطط وكلاب مصر', 'So the cats and dogs')}
                   <br />
-                  <span className="text-baladi-yellow">
+                  <span className="text-baladi-red">
                     {t('ما تنامش جيعانة', 'of Egypt never sleep hungry')}
                   </span>
                 </>
@@ -42,13 +42,13 @@ export default function Story() {
             </h1>
             {isLoadingContent && story.length === 0 ? (
               <div className="mt-7 max-w-2xl space-y-3">
-                <div className="h-4 w-full animate-pulse rounded-full bg-cream/15" />
-                <div className="h-4 w-5/6 animate-pulse rounded-full bg-cream/15" />
+                <div className="h-4 w-full animate-pulse rounded-full bg-ink/10" />
+                <div className="h-4 w-5/6 animate-pulse rounded-full bg-ink/10" />
               </div>
             ) : story.length > 0 ? (
               <div className="mt-7 max-w-2xl space-y-4">
                 {story.slice(0, 2).map((sec, idx) => (
-                  <p key={idx} className="text-[15.5px] font-medium leading-relaxed text-cream/90">
+                  <p key={idx} className="text-[15.5px] font-medium leading-relaxed text-ink/80">
                     {sec.body}
                   </p>
                 ))}
@@ -58,7 +58,7 @@ export default function Story() {
         </div>
       </section>
 
-      <section id="standard" className="bg-cream py-16 md:py-24">
+      <section id="standard" className="bg-white py-16 md:py-24 border-b hairline">
         <div className="u-container grid gap-8 lg:grid-cols-3">
           {isLoadingContent && story.length === 0
             ? [0, 1, 2].map((i) => (

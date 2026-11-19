@@ -7,7 +7,7 @@ import Layout from './components/layout/Layout';
 
 function AppSuspenseFallback() {
   const { t } = useLang();
-  return <div className="grid min-h-screen place-items-center bg-cream font-black text-ink">{t('بَلَدِي', 'BALADI')}</div>;
+  return <div className="grid min-h-screen place-items-center bg-white font-black text-ink">{t('بلدي', 'BALADI')}</div>;
 }
 
 const Home = lazy(() => import('./pages/Home'));

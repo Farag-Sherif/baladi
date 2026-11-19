@@ -48,26 +48,26 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-cream pt-[68px] md:pt-[84px]">
-      <div className="relative overflow-hidden bg-ink py-12 text-cream">
-        <ZigZagBand color="#FBBB21" height={20} className="absolute inset-x-0 top-0 opacity-80" />
+    <div className="min-h-screen bg-white pt-[68px] md:pt-[84px]">
+      <div className="relative overflow-hidden bg-white border-b hairline py-12 text-ink">
+        <ZigZagBand color="#E84249" height={16} className="absolute inset-x-0 top-0 opacity-40" />
         <div className="u-container relative text-center">
           <div className="mx-auto mb-4 flex justify-center">
-            <Mark tone="red" white className="h-10" />
+            <Mark tone="red" className="h-10" />
           </div>
-          <p className="t-eyebrow text-baladi-yellow">{t('أهلاً بك مجدداً', 'WELCOME BACK')}</p>
-          <h1 className="t-display mt-2 text-[clamp(2rem,4.5vw,3.2rem)] text-white">
+          <p className="t-eyebrow text-baladi-red">{t('أهلاً بك مجدداً', 'WELCOME BACK')}</p>
+          <h1 className="t-display mt-2 text-[clamp(2rem,4.5vw,3.2rem)] text-ink">
             {t('تسجيل الدخول', 'Sign In')}
           </h1>
-          <p className="mt-3 text-[15px] font-medium text-cream/90">
+          <p className="mt-3 text-[15px] font-medium text-ink/80">
             {t('تابع طلباتك وعناوينك والمفضلة من مكان واحد.', 'Track your orders, addresses, and favorites in one place.')}
           </p>
         </div>
       </div>
 
-      <div className="u-container -mt-6 pb-20">
+      <div className="u-container py-10 pb-20">
         <div className="mx-auto max-w-md rounded-[32px] border hairline bg-white p-6 shadow-soft md:p-8">
-          <div className="mb-6 grid grid-cols-2 gap-2 rounded-2xl bg-cream p-1.5 text-center text-sm font-black">
+          <div className="mb-6 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1.5 text-center text-sm font-black">
             <span className="rounded-xl bg-ink py-2.5 text-white shadow-sm">
               {t('تسجيل الدخول', 'Sign In')}
             </span>

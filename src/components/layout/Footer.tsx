@@ -8,7 +8,7 @@ export default function Footer() {
   const { t, lang } = useLang();
   const settings = useStorefront((s) => s.settings);
   const categories = useStorefront((s) => s.categories);
-  const linkCls = 'text-cream/90 hover:text-white transition-colors inline-block py-0.5';
+  const linkCls = 'text-ink/75 hover:text-baladi-red transition-colors inline-block py-0.5';
 
   const catDry = categories.find((c) => c.species === 'cat');
   const dogDry = categories.find((c) => c.species === 'dog');
@@ -19,15 +19,15 @@ export default function Footer() {
   const fbUrl = settings?.facebook;
 
   return (
-    <footer className="relative mt-0 overflow-hidden bg-ink text-cream" style={{ backgroundColor: '#23254F', color: '#FBF6EE' }}>
-      <ZigZagBand color="#FBBB21" height={26} className="opacity-90" />
+    <footer className="relative mt-0 overflow-hidden bg-white text-ink border-t hairline">
+      <ZigZagBand color="#E84249" height={16} className="opacity-80" />
       <div className="u-container grid gap-10 py-16 md:grid-cols-[1.3fr_0.9fr_0.9fr_0.9fr_1fr]">
         <div>
           <div className="flex flex-col items-start gap-3">
-            <Mark tone="red" white className="h-11" />
+            <Mark tone="red" className="h-11" />
             <GpfBadge />
           </div>
-          <p className="mt-4 max-w-xs text-sm leading-relaxed text-cream/95 font-medium">
+          <p className="mt-4 max-w-xs text-sm leading-relaxed text-ink/80 font-medium">
             {t(
               'طعام جاف كامل للقطط والكلاب، معمول فى مصر عشان البلدى وكل الحيوانات ما تنامش جيعانة.',
               'Complete dry food for cats and dogs, made in Egypt so Baladi animals — and every animal — never sleep hungry.'
@@ -39,7 +39,7 @@ export default function Footer() {
                 href={igUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="grid h-10 w-10 place-items-center rounded-full border border-cream/40 text-cream transition-colors hover:border-baladi-yellow hover:text-baladi-yellow hover:bg-white/10"
+                className="grid h-10 w-10 place-items-center rounded-full border border-ink/15 text-ink/75 transition-colors hover:border-baladi-red hover:text-baladi-red hover:bg-slate-50"
                 aria-label={t('إنستجرام', 'Instagram')}
               >
                 <Instagram className="h-4 w-4" />
@@ -50,7 +50,7 @@ export default function Footer() {
                 href={fbUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="grid h-10 w-10 place-items-center rounded-full border border-cream/40 text-cream transition-colors hover:border-baladi-yellow hover:text-baladi-yellow hover:bg-white/10"
+                className="grid h-10 w-10 place-items-center rounded-full border border-ink/15 text-ink/75 transition-colors hover:border-baladi-red hover:text-baladi-red hover:bg-slate-50"
                 aria-label={t('فيسبوك', 'Facebook')}
               >
                 <Facebook className="h-4 w-4" />
@@ -59,7 +59,7 @@ export default function Footer() {
             {email && (
               <a
                 href={`mailto:${email}`}
-                className="grid h-10 w-10 place-items-center rounded-full border border-cream/40 text-cream transition-colors hover:border-baladi-yellow hover:text-baladi-yellow hover:bg-white/10"
+                className="grid h-10 w-10 place-items-center rounded-full border border-ink/15 text-ink/75 transition-colors hover:border-baladi-red hover:text-baladi-red hover:bg-slate-50"
                 aria-label={t('البريد الإلكتروني', 'Email')}
               >
                 <Mail className="h-4 w-4" />
@@ -69,7 +69,7 @@ export default function Footer() {
         </div>
 
         <div>
-          <p className="t-eyebrow text-baladi-yellow">{t('المتجر', 'Shop')}</p>
+          <p className="t-eyebrow text-baladi-red">{t('المتجر', 'Shop')}</p>
           <ul className="mt-4 space-y-2.5 text-sm font-semibold">
             <li><Link className={linkCls} to="/cats">{t('عالم القطط', 'Cats world')}</Link></li>
             <li><Link className={linkCls} to="/dogs">{t('عالم الكلاب', 'Dogs world')}</Link></li>
@@ -84,7 +84,7 @@ export default function Footer() {
         </div>
 
         <div>
-          <p className="t-eyebrow text-baladi-yellow">{t('حسابي', 'Account')}</p>
+          <p className="t-eyebrow text-baladi-red">{t('حسابي', 'Account')}</p>
           <ul className="mt-4 space-y-2.5 text-sm font-semibold">
             <li><Link className={linkCls} to="/login">{t('تسجيل الدخول', 'Sign in')}</Link></li>
             <li><Link className={linkCls} to="/register">{t('حساب جديد', 'Register')}</Link></li>
@@ -94,7 +94,7 @@ export default function Footer() {
         </div>
 
         <div>
-          <p className="t-eyebrow text-baladi-yellow">{t('البراند', 'Brand')}</p>
+          <p className="t-eyebrow text-baladi-red">{t('البراند', 'Brand')}</p>
           <ul className="mt-4 space-y-2.5 text-sm font-semibold">
             <li><Link className={linkCls} to="/story">{t('قصتنا', 'Our story')}</Link></li>
             <li><Link className={linkCls} to="/story#standard">{t('المعايير والجودة', 'Standards')}</Link></li>
@@ -103,26 +103,26 @@ export default function Footer() {
         </div>
 
         <div>
-          <p className="t-eyebrow text-baladi-yellow">{t('تواصل', 'Contact')}</p>
-          <ul className="mt-4 space-y-3 text-sm font-semibold text-cream/95">
+          <p className="t-eyebrow text-baladi-red">{t('تواصل', 'Contact')}</p>
+          <ul className="mt-4 space-y-3 text-sm font-semibold text-ink/85">
             <li className="flex items-start gap-2">
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-baladi-yellow" />
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-baladi-red" />
               {t('الجيزة، مصر', 'Giza, Egypt')}
             </li>
             <li className="flex items-start gap-2">
-              <Mail className="mt-0.5 h-4 w-4 shrink-0 text-baladi-yellow" />
+              <Mail className="mt-0.5 h-4 w-4 shrink-0 text-baladi-red" />
               <a href={`mailto:${email}`} className="hover:underline">{email}</a>
             </li>
             {phone && (
               <li className="flex items-start gap-2" dir="ltr">
-                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-baladi-yellow" />
+                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-baladi-red" />
                 <a href={`tel:${phone}`} className="hover:underline">{phone}</a>
               </li>
             )}
           </ul>
-          <div className="mt-5 flex items-center gap-2 rounded-2xl bg-cream/10 p-3">
+          <div className="mt-5 flex items-center gap-2 rounded-2xl border hairline bg-slate-50 p-3">
             <DiamondBadge size={26} accent="#E84249" dot="#FBBB21" />
-            <p className="text-[12px] font-semibold leading-snug text-cream/90">
+            <p className="text-[12px] font-semibold leading-snug text-ink/80">
               {settings?.free_shipping_threshold
                 ? t(
                     `شحن مجاني للطلبات فوق ${settings.free_shipping_threshold} ${lang === 'ar' ? 'ج.م' : 'EGP'}`,
@@ -134,9 +134,9 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="border-t border-cream/20">
-        <div className="u-container flex flex-col items-center justify-between gap-3 py-5 text-[12px] font-semibold text-cream/80 sm:flex-row">
-          <p>© {new Date().getFullYear()} {settings?.store_name || t('بَلَدِي', 'BALADI')} · {t('كل الحقوق محفوظة', 'All rights reserved')}</p>
+      <div className="border-t hairline">
+        <div className="u-container flex flex-col items-center justify-between gap-3 py-5 text-[12px] font-semibold text-ink/60 sm:flex-row">
+          <p>© {new Date().getFullYear()} {settings?.store_name || t('بلدي', 'BALADI')} · {t('كل الحقوق محفوظة', 'All rights reserved')}</p>
           <p>{t('صُنع بحب للحيوانات البلدى', 'Made with love for Baladi animals')}</p>
         </div>
       </div>

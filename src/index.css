@@ -15,19 +15,19 @@
   --baladi-ink: #23254f;
   --baladi-yellow: #fbbb21;
   --baladi-green: #1e996c;
-  --baladi-cream: #fbf6ee;
-  --baladi-sand: #f2e6d5;
+  --baladi-cream: #ffffff;
+  --baladi-sand: #f8f9fa;
 
-  --paper: var(--baladi-cream);
+  --paper: #ffffff;
   --ink: var(--baladi-ink);
   --accent: var(--baladi-red);
   --accent-ink: #ffffff;
   --accent-soft: #fce3e4;
 
   --radius-card: 26px;
-  --shadow-card: 0 22px 60px -30px rgba(35, 37, 79, 0.45);
-  --shadow-float: 0 40px 90px -40px rgba(35, 37, 79, 0.55);
-  --hairline: rgba(35, 37, 79, 0.12);
+  --shadow-card: 0 10px 30px -15px rgba(35, 37, 79, 0.12);
+  --shadow-float: 0 20px 50px -20px rgba(35, 37, 79, 0.16);
+  --hairline: rgba(35, 37, 79, 0.08);
 }
 
 /* Branch themes: cats = red/coral world, dogs = green world.

@@ -43,18 +43,14 @@ export default function Header() {
   return (
     <header
       className={cn(
-        'fixed inset-x-0 top-0 z-40 transition-all duration-500',
-        transparent ? 'bg-transparent text-cream' : 'bg-cream/95 text-ink backdrop-blur-xl shadow-[0_1px_0_rgba(35,37,79,0.10)]'
+        'fixed inset-x-0 top-0 z-40 bg-white/95 text-ink backdrop-blur-xl transition-all duration-300',
+        scrolled ? 'shadow-[0_2px_15px_rgba(35,37,79,0.08)]' : 'border-b hairline'
       )}
-      style={{
-        color: transparent ? '#FBF6EE' : undefined,
-        backgroundColor: !transparent ? 'rgba(251, 246, 238, 0.95)' : undefined,
-      }}
     >
       <div className="u-container">
         <div className="flex h-[68px] items-center justify-between gap-4 md:h-[84px]">
           <Link to="/" className="shrink-0" aria-label={t('بلدى — الصفحة الرئيسية', 'BALADI — home')}>
-            <Mark tone="red" white={transparent} className="h-8 md:h-10" />
+            <Mark tone="red" className="h-8 md:h-10" />
           </Link>
 
           <nav className="hidden items-center gap-1 lg:flex">
@@ -66,8 +62,8 @@ export default function Header() {
                   cn(
                     'rounded-full px-4 py-2 text-[13.5px] font-extrabold tracking-wide transition-colors',
                     isActive
-                      ? transparent ? 'bg-white/25 text-white' : 'bg-ink text-white'
-                      : transparent ? 'text-white/95 hover:text-white' : 'text-ink/85 hover:text-ink'
+                      ? 'bg-ink text-white shadow-xs'
+                      : 'text-ink/80 hover:text-ink hover:bg-ink/5'
                   )
                 }
               >
@@ -80,10 +76,7 @@ export default function Header() {
             <button
               type="button"
               onClick={toggle}
-              className={cn(
-                'flex items-center gap-1.5 rounded-full px-3 py-2 text-[12px] font-extrabold transition-colors',
-                transparent ? 'text-white hover:bg-white/15' : 'text-ink/85 hover:bg-ink/5'
-              )}
+              className="flex items-center gap-1.5 rounded-full px-3 py-2 text-[12px] font-extrabold text-ink/85 hover:bg-ink/5 transition-colors"
               aria-label={t('تغيير اللغة', 'Switch language')}
             >
               <Globe2 className="h-4 w-4" />
@@ -93,10 +86,7 @@ export default function Header() {
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              className={cn(
-                'flex items-center gap-1.5 rounded-full p-2 transition-colors sm:px-2.5',
-                transparent ? 'text-white hover:bg-white/15' : 'text-ink hover:bg-ink/5'
-              )}
+              className="flex items-center gap-1.5 rounded-full p-2 text-ink hover:bg-ink/5 transition-colors sm:px-2.5"
               title={t('ابحث في المتجر', 'Search Store')}
               aria-label={t('البحث', 'Search')}
             >
@@ -109,10 +99,7 @@ export default function Header() {
             {isAuthenticated && (
               <Link
                 to="/profile?tab=notifications"
-                className={cn(
-                  'relative rounded-full p-2 transition-colors',
-                  transparent ? 'text-white hover:bg-white/15' : 'text-ink hover:bg-ink/5'
-                )}
+                className="relative rounded-full p-2 text-ink hover:bg-ink/5 transition-colors"
                 title={t('الإشعارات', 'Notifications')}
                 aria-label={t('الإشعارات', 'Notifications')}
               >
@@ -127,12 +114,7 @@ export default function Header() {
 
             <Link
               to={isAuthenticated ? '/profile' : '/login'}
-              className={cn(
-                'flex items-center gap-2 rounded-full py-1 ps-2 pe-3 text-xs font-black transition-all shadow-xs',
-                transparent
-                  ? 'border border-white/20 bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm'
-                  : 'border border-ink/20 bg-white text-ink hover:border-ink/40 hover:bg-cream'
-              )}
+              className="flex items-center gap-2 rounded-full border border-ink/20 bg-white py-1 ps-2 pe-3 text-xs font-black text-ink hover:border-ink/40 hover:bg-slate-50 transition-all shadow-xs"
               title={isAuthenticated ? t('الملف الشخصي وحسابي', 'My Profile & Account') : t('تسجيل الدخول', 'Sign In')}
               aria-label={isAuthenticated ? t('الملف الشخصي وحسابي', 'My Profile & Account') : t('تسجيل الدخول', 'Sign In')}
             >
@@ -158,7 +140,7 @@ export default function Header() {
             <button
               type="button"
               onClick={open}
-              className={cn('relative rounded-full p-2 transition-colors', transparent ? 'text-white hover:bg-white/15' : 'text-ink hover:bg-ink/5')}
+              className="relative rounded-full p-2 text-ink hover:bg-ink/5 transition-colors"
               aria-label={t('السلة', 'Cart')}
             >
               <ShoppingBag className="h-[19px] w-[19px]" />
@@ -171,7 +153,7 @@ export default function Header() {
             <button
               type="button"
               onClick={() => setMenu(true)}
-              className={cn('rounded-full p-2 lg:hidden', transparent ? 'text-white hover:bg-white/15' : 'text-ink hover:bg-ink/5')}
+              className="rounded-full p-2 text-ink hover:bg-ink/5 transition-colors lg:hidden"
               aria-label={t('القائمة', 'Menu')}
             >
               <Menu className="h-5 w-5" />
@@ -179,14 +161,14 @@ export default function Header() {
           </div>
         </div>
       </div>
-      {!transparent && <ZigZagBand height={12} color="#E84249" />}
+      <ZigZagBand height={10} color="#E84249" />
 
       <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
 
       {menu && (
         <div className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm lg:hidden" onClick={() => setMenu(false)}>
           <div
-            className="animate-[slideIn_.35s_ease-out] ms-auto flex h-full w-[86%] max-w-sm flex-col bg-cream p-6 text-ink overflow-y-auto"
+            className="animate-[slideIn_.35s_ease-out] ms-auto flex h-full w-[86%] max-w-sm flex-col bg-white p-6 text-ink overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-6 flex items-center justify-between">
@@ -272,9 +254,9 @@ export default function Header() {
               )}
             </div>
             <div className="mt-auto pt-6">
-              <div className="rounded-3xl bg-ink p-5 text-cream">
-                <p className="t-eyebrow text-baladi-yellow">{t('صُنع فى مصر', 'Made in Egypt')}</p>
-                <p className="mt-2 text-sm leading-relaxed text-cream/90 font-medium">
+              <div className="rounded-3xl border hairline bg-slate-50 p-5 text-ink">
+                <p className="t-eyebrow text-baladi-red">{t('صُنع فى مصر', 'Made in Egypt')}</p>
+                <p className="mt-2 text-sm leading-relaxed text-ink/80 font-medium">
                   {t('طعام جاف كامل للقطط والكلاب — للبلدى وكل الحيوانات.', 'Complete dry food for cats and dogs — for Baladi animals and all.')}
                 </p>
               </div>

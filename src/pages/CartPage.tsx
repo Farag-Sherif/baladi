@@ -33,7 +33,7 @@ export default function CartPage() {
   const count = cartCount(items);
 
   return (
-    <div className="min-h-[85vh] bg-cream pt-[68px] md:pt-[84px]">
+    <div className="min-h-[85vh] bg-white pt-[68px] md:pt-[84px]">
       <div className="u-container py-12">
         <p className="t-eyebrow text-baladi-red">{t('السلة', 'YOUR BAG')}</p>
         <h1 className="t-display mt-3 text-[clamp(2rem,4.4vw,3.2rem)] text-ink">

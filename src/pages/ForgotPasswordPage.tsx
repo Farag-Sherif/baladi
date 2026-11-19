@@ -150,19 +150,19 @@ export default function ForgotPasswordPage() {
   const whatsappDigits = (settings?.whatsapp || settings?.store_phone || '').replace(/[^\d]/g, '');
 
   return (
-    <div className="min-h-screen bg-cream pt-[68px] md:pt-[84px]">
+    <div className="min-h-screen bg-white pt-[68px] md:pt-[84px]">
       {/* Header Banner */}
-      <div className="relative overflow-hidden bg-ink py-12 text-cream">
-        <ZigZagBand color="#FBBB21" height={20} className="absolute inset-x-0 top-0 opacity-80" />
+      <div className="relative overflow-hidden bg-white border-b hairline py-12 text-ink">
+        <ZigZagBand color="#E84249" height={16} className="absolute inset-x-0 top-0 opacity-40" />
         <div className="u-container relative text-center">
           <div className="mx-auto mb-4 flex justify-center">
-            <Mark tone="red" white className="h-10" />
+            <Mark tone="red" className="h-10" />
           </div>
-          <p className="t-eyebrow text-baladi-yellow">{t('استعادة الحساب والأمان', 'ACCOUNT RECOVERY')}</p>
-          <h1 className="t-display mt-2 text-[clamp(2rem,4.5vw,3.2rem)] text-white">
+          <p className="t-eyebrow text-baladi-red">{t('استعادة الحساب والأمان', 'ACCOUNT RECOVERY')}</p>
+          <h1 className="t-display mt-2 text-[clamp(2rem,4.5vw,3.2rem)] text-ink">
             {t('استعادة كلمة المرور', 'Password Recovery')}
           </h1>
-          <p className="mt-3 text-[15px] font-medium text-cream/90 max-w-md mx-auto">
+          <p className="mt-3 text-[15px] font-medium text-ink/80 max-w-md mx-auto">
             {t(
               'أدخل بريدك الإلكتروني لإعادة تعيين كلمة المرور واستعادة الوصول إلى حسابك.',
               'Reset your password securely and regain access to your Baladi account.'
@@ -171,7 +171,7 @@ export default function ForgotPasswordPage() {
         </div>
       </div>
 
-      <div className="u-container -mt-6 pb-20">
+      <div className="u-container py-10 pb-20">
         <div className="mx-auto max-w-md rounded-[32px] border hairline bg-white p-6 shadow-soft md:p-8">
           {/* Progress Indicators */}
           {step !== 'success' && (
