@@ -24,7 +24,7 @@ export default function Footer() {
       <div className="u-container grid gap-10 py-16 md:grid-cols-[1.3fr_0.9fr_0.9fr_0.9fr_1fr]">
         <div>
           <div className="flex flex-col items-start gap-3">
-            <Mark tone="red" white className="h-11" />
+            <Mark tone="green" className="h-11" />
             <GpfBadge />
           </div>
           <p className="mt-4 max-w-xs text-sm leading-relaxed text-cream/95 font-medium">
