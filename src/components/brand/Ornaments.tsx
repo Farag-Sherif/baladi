@@ -122,24 +122,36 @@ export function LeafStem({
 
 /** Official wordmark. `tone` picks the artwork; `white` recolours it for dark fields. */
 export function Mark({
-  tone,
+  tone = 'red',
   white = false,
   className,
   alt,
 }: {
-  tone: 'green' | 'red';
+  tone?: 'green' | 'red' | 'ink';
   white?: boolean;
   className?: string;
   alt?: string;
 }) {
   const { lang } = useLang();
-  const src = lang === 'ar' ? `/brand/ar-${tone}.png` : `/brand/lat-${tone}.png`;
+  const fileTone = tone === 'green' ? 'green' : 'red';
+  const src = lang === 'ar' ? `/brand/ar-${fileTone}.png` : `/brand/lat-${fileTone}.png`;
+
+  let filterStyle: React.CSSProperties | undefined = undefined;
+  if (white) {
+    filterStyle = { filter: 'brightness(0) invert(1)' };
+  } else if (tone === 'ink') {
+    filterStyle = {
+      filter:
+        'brightness(0) saturate(100%) invert(14%) sepia(34%) saturate(2337%) hue-rotate(205deg) brightness(91%) contrast(96%)',
+    };
+  }
+
   return (
     <img
       src={src}
       alt={alt ?? (lang === 'ar' ? 'بلدى' : 'BALADI')}
       className={cn('w-auto select-none', className)}
-      style={white ? { filter: 'brightness(0) invert(1)' } : undefined}
+      style={filterStyle}
       draggable={false}
     />
   );

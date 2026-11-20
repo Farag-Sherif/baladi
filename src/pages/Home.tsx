@@ -272,13 +272,25 @@ export default function Home() {
       <section className="relative overflow-hidden bg-baladi-yellow py-16">
         <Thunder color="rgba(35,37,79,.28)" height={18} className="absolute inset-x-0 top-0" />
         <div className="u-container flex flex-col items-center gap-6 text-center">
-          <Mark tone="red" className="h-12" />
+          <Mark tone="red" className="h-12 drop-shadow-xs" />
           <h2 className="t-display max-w-2xl text-[clamp(1.8rem,4vw,3rem)] text-ink">
             {t('اطعم صح، تفرق كتير', 'Feed right, it changes everything')}
           </h2>
-          <div className="flex flex-wrap justify-center gap-3">
-            <Link to="/cats" className="btn btn-ink">{t('عالم القطط', 'Cats world')}</Link>
-            <Link to="/dogs" className="btn bg-white text-ink hover:-translate-y-0.5">{t('عالم الكلاب', 'Dogs world')}</Link>
+          <div className="flex flex-wrap justify-center gap-3.5">
+            <Link
+              to="/cats"
+              className="btn bg-baladi-red text-white hover:brightness-110 shadow-md inline-flex items-center gap-2 transition-transform hover:-translate-y-0.5"
+            >
+              <BaladiCatEmblem size={18} color="currentColor" />
+              <span>{t('عالم القطط', 'Cats world')}</span>
+            </Link>
+            <Link
+              to="/dogs"
+              className="btn bg-baladi-green text-white hover:brightness-110 shadow-md inline-flex items-center gap-2 transition-transform hover:-translate-y-0.5"
+            >
+              <BaladiDogEmblem size={18} color="currentColor" />
+              <span>{t('عالم الكلاب', 'Dogs world')}</span>
+            </Link>
           </div>
         </div>
         <Thunder color="rgba(35,37,79,.28)" height={18} className="absolute inset-x-0 bottom-0 rotate-180" />
