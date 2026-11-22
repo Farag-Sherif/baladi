@@ -548,20 +548,6 @@ export default function BaladiPouch3DViewer({
     setUserRotated(false);
   };
 
-  const previewImage =
-    mode === 'cats'
-      ? '/brand/pouch-cats.png'
-      : mode === 'dogs'
-      ? '/brand/pouch-dogs.png'
-      : '/brand/pouch-duo.png';
-
-  const previewAlt =
-    mode === 'cats'
-      ? (isRtl ? 'أكياس طعام بلدي للقطط' : 'Baladi Cat Food Pouches')
-      : mode === 'dogs'
-      ? (isRtl ? 'أكياس طعام بلدي للكلاب' : 'Baladi Dog Food Pouches')
-      : (isRtl ? 'أكياس طعام بلدي' : 'Baladi Food Pouches');
-
   return (
     <div
       ref={containerRef}
@@ -578,21 +564,6 @@ export default function BaladiPouch3DViewer({
         ref={canvasRef}
         className="h-full w-full object-contain filter drop-shadow-[0_25px_40px_rgba(0,0,0,0.65)]"
       />
-
-      {/* Static product preview image while 3D model loads */}
-      <div
-        className={`absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-500 ease-out z-10 ${
-          isLoading ? 'opacity-100' : 'opacity-0'
-        }`}
-        aria-hidden={!isLoading}
-      >
-        <img
-          src={previewImage}
-          alt={previewAlt}
-          className="max-h-[380px] sm:max-h-[440px] md:max-h-[480px] w-auto object-contain drop-shadow-[0_20px_35px_rgba(0,0,0,0.18)] pointer-events-none select-none"
-          loading="eager"
-        />
-      </div>
 
       {/* 3D Control Pill & Reset Button (Visible only when 3D model is ready) */}
       {!isLoading && (

@@ -8,7 +8,7 @@ import { Mark } from './components/brand/Ornaments';
 
 function AppSuspenseFallback() {
   return (
-    <div className="grid min-h-screen place-items-center bg-white">
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white pointer-events-auto select-none">
       <div className="flex flex-col items-center gap-4 animate-pulse">
         <Mark tone="red" className="h-12 sm:h-14 w-auto" />
       </div>
