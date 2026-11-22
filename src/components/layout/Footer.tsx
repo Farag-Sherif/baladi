@@ -29,7 +29,7 @@ export default function Footer() {
           </div>
           <p className="mt-4 max-w-xs text-sm leading-relaxed text-cream/95 font-medium">
             {t(
-              'طعام جاف كامل للقطط والكلاب، معمول فى مصر عشان البلدى وكل الحيوانات ما تنامش جيعانة.',
+              'طعام جاف كامل للقطط والكلاب، معمول فى مصر عشان البلدى وكل الحيوانات ما تنامش جعانة.',
               'Complete dry food for cats and dogs, made in Egypt so Baladi animals — and every animal — never sleep hungry.'
             )}
           </p>

@@ -494,7 +494,7 @@ export default function ProductPage() {
               </div>
             </div>
             <div className={`rounded-[26px] p-6 ${isCat ? 'bg-baladi-red/10' : 'bg-baladi-green/10'}`}>
-              <p className={`t-eyebrow ${accent}`}>{s.eyebrow[lang]}</p>
+              {s.eyebrow[lang] && <p className={`t-eyebrow ${accent}`}>{s.eyebrow[lang]}</p>}
               <p className="mt-2 text-[13px] font-medium leading-relaxed text-ink/85">{s.intro[lang]}</p>
               <Link to={`/${routeSpecies}`} className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-black uppercase tracking-[0.14em] text-ink/80 hover:text-ink">
                 {t('كل منتجات', 'All')} {s.name[lang]} <span className="inline-block rtl:rotate-180">→</span>

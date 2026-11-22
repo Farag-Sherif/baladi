@@ -16,9 +16,6 @@ import { useLang } from '../../lib/lang';
 import { Thunder } from '../brand/Ornaments2';
 import { ZigZagBand, BaladiCatEmblem, BaladiDogEmblem, BaladiDuoEmblem, BaladiGridBackground, DiamondBadge } from '../brand/Ornaments';
 import { cn } from '../../lib/utils';
-import BaladiPouch3DViewer from './BaladiPouch3DViewer';
-import HeroPreloader from './HeroPreloader';
-import { getIs3DPreloaded, setIs3DPreloaded } from '../../lib/3dPreloader';
 
 type WorldMode = 'both' | 'cats' | 'dogs';
 
@@ -236,38 +233,9 @@ export default function Baladi3DHero() {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // ── 3D ASSET PRELOAD TRACKING ──
-  const [is3DReady, setIs3DReady] = useState(() => getIs3DPreloaded());
-
-  const handle3DReady = () => {
-    setIs3DPreloaded(true);
-    setIs3DReady(true);
-  };
-
-  // Fallback safety timeout so site never stays permanently blocked
+  // ── AUTO-CYCLE TIMER (Transitions between both, cats, dogs every 3.2 seconds) ──
   useEffect(() => {
-    if (is3DReady) return;
-    const timer = setTimeout(() => {
-      setIs3DPreloaded(true);
-      setIs3DReady(true);
-    }, 7000);
-    return () => clearTimeout(timer);
-  }, [is3DReady]);
-
-  // Lock scroll while preloader is active to prevent awkward scrolling before reveal
-  useEffect(() => {
-    if (!is3DReady) {
-      const prevOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.overflow = prevOverflow;
-      };
-    }
-  }, [is3DReady]);
-
-  // ── AUTO-CYCLE TIMER (Transitions between both, cats, dogs every 3 seconds) ──
-  useEffect(() => {
-    if (isPaused || !is3DReady) return;
+    if (isPaused) return;
 
     const timer = setInterval(() => {
       setMode((current) => {
@@ -277,7 +245,7 @@ export default function Baladi3DHero() {
     }, 3200);
 
     return () => clearInterval(timer);
-  }, [isPaused, is3DReady]);
+  }, [isPaused]);
 
   // Background 3D Floating Particles
   useEffect(() => {
@@ -343,17 +311,11 @@ export default function Baladi3DHero() {
   }, []);
 
   return (
-    <>
-      {/* ── 3D PRODUCT ASSET PRELOADER (Minimalist Brand Logo Loader) ── */}
-      <AnimatePresence>
-        {!is3DReady && <HeroPreloader onSkip={handle3DReady} />}
-      </AnimatePresence>
-
-      <section
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-        className="relative min-h-[94vh] lg:min-h-screen w-full overflow-hidden bg-white pt-24 pb-14 text-ink flex flex-col justify-between"
-      >
+    <section
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      className="relative min-h-[94vh] lg:min-h-screen w-full overflow-hidden bg-white pt-24 pb-14 text-ink flex flex-col justify-between"
+    >
       {/* ── 3D AMBIENT ENVIRONMENT & LIGHTS ──────────────── */}
       <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 z-0 h-full w-full opacity-40" />
 
@@ -532,7 +494,7 @@ export default function Baladi3DHero() {
 
           </div>
 
-          {/* ── REAL 3D INTERACTIVE PRODUCT SHOWROOM (7 cols on lg) ─── */}
+          {/* ── HIGH-RES STATIC PRODUCT SHOWROOM (7 cols on lg) ─── */}
           <div className="order-1 lg:order-2 lg:col-span-7 relative flex flex-col items-center justify-center">
             
             {/* Floor Pedestal Shadow */}
@@ -545,8 +507,33 @@ export default function Baladi3DHero() {
               }}
             />
 
-            {/* REAL THREE.JS 3D GLB POUCH VIEWER (Direct 3D Rendering) */}
-            <BaladiPouch3DViewer mode={mode} isPaused={isPaused} onReady={handle3DReady} />
+            {/* HIGH-RES STATIC POUCH SHOWROOM */}
+            <div className="relative flex h-[460px] sm:h-[520px] md:h-[580px] w-full max-w-[580px] items-center justify-center select-none">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={`pouch-${mode}`}
+                  initial={{ opacity: 0, scale: 0.94, y: 12 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.96, y: -10 }}
+                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                  className="relative flex h-full w-full items-center justify-center"
+                >
+                  <img
+                    src={
+                      mode === 'both'
+                        ? '/brand/pouch-duo.png'
+                        : mode === 'cats'
+                        ? '/brand/pouch-cats.png'
+                        : '/brand/pouch-dogs.png'
+                    }
+                    alt={isRtl ? activePack.nameAr : activePack.nameEn}
+                    className="max-h-[420px] sm:max-h-[480px] md:max-h-[530px] w-auto max-w-full object-contain filter drop-shadow-[0_20px_35px_rgba(35,37,79,0.20)] select-none transition-transform duration-300 hover:scale-[1.02]"
+                    draggable={false}
+                    loading="eager"
+                  />
+                </motion.div>
+              </AnimatePresence>
+            </div>
 
             {/* FLOATING HOLOGRAPHIC BADGES */}
             <AnimatePresence mode="wait">
@@ -661,6 +648,5 @@ export default function Baladi3DHero() {
       </div>
 
     </section>
-    </>
   );
 }

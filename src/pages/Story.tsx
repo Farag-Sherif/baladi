@@ -35,7 +35,7 @@ export default function Story() {
                   {t('عشان قطط وكلاب مصر', 'So the cats and dogs')}
                   <br />
                   <span className="text-baladi-red">
-                    {t('ما تنامش جيعانة', 'of Egypt never sleep hungry')}
+                    {t('ما تنامش جعانة', 'of Egypt never sleep hungry')}
                   </span>
                 </>
               )}

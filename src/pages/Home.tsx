@@ -88,7 +88,7 @@ export default function Home() {
                       <div className="relative z-10 flex flex-1 flex-col p-8 md:p-10">
                         <div className="flex items-start justify-between">
                           <div>
-                            <p className="t-eyebrow text-white/90">{s.eyebrow[lang]}</p>
+                            {s.eyebrow[lang] && <p className="t-eyebrow text-white/90">{s.eyebrow[lang]}</p>}
                             <h3 className="t-display mt-2 text-[clamp(2.4rem,5vw,3.6rem)] text-white">{s.name[lang]}</h3>
                           </div>
                           <DiamondBadge size={38} ink="#23254F" accent="#FBBB21" dot="#FBF6EE" />
@@ -127,7 +127,7 @@ export default function Home() {
               <p className="t-eyebrow text-baladi-red">{t('القصة', 'THE STORY')}</p>
               <h2 className="t-display mt-4 text-[clamp(2rem,4.4vw,3.4rem)] text-ink">
                 {t('الحيوانات البلدى', 'Baladi animals')}<br />
-                <span className="text-baladi-red">{t('تستاهل أكل كامل', 'deserve complete food')}</span>
+                <span className="text-baladi-red">{t('تستاهل وجبة متكاملة', 'deserve a complete meal')}</span>
               </h2>
               {isLoadingContent && story.length === 0 ? (
                 <div className="mt-6 max-w-lg space-y-3">
@@ -274,7 +274,7 @@ export default function Home() {
         <div className="u-container flex flex-col items-center gap-6 text-center">
           <Mark tone="red" className="h-12 drop-shadow-xs" />
           <h2 className="t-display max-w-2xl text-[clamp(1.8rem,4vw,3rem)] text-ink">
-            {t('اطعم صح، تفرق كتير', 'Feed right, it changes everything')}
+            {t('طعام صحي غني بالبروتين', 'Healthy food rich in protein')}
           </h2>
           <div className="flex flex-wrap justify-center gap-3.5">
             <Link

@@ -62,7 +62,7 @@ export default function World({ species }: { species: Species }) {
 
           <div className="mt-8 grid items-end gap-8 lg:grid-cols-[1.15fr_0.85fr]">
             <div>
-              <p className="t-eyebrow text-baladi-yellow">{s.eyebrow[lang]} · {t('عالم كامل', 'A WHOLE WORLD')}</p>
+              <p className="t-eyebrow text-baladi-yellow">{s.eyebrow[lang] ? `${s.eyebrow[lang]} · ` : ''}{t('عالم كامل', 'A WHOLE WORLD')}</p>
               <h1 className="t-display mt-3 text-[clamp(3rem,8vw,6.5rem)] text-white">{s.name[lang]}</h1>
               <p className="mt-5 max-w-xl text-[15.5px] font-medium leading-relaxed text-white/95">{s.intro[lang]}</p>
               <div className="mt-7 flex flex-wrap gap-2.5">
