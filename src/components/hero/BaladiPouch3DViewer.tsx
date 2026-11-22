@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { Rotate3d, Loader2 } from 'lucide-react';
+import { Rotate3d } from 'lucide-react';
 import { useLang } from '../../lib/lang';
 import { getIs3DPreloaded, setIs3DPreloaded } from '../../lib/3dPreloader';
 
@@ -500,6 +500,7 @@ export default function BaladiPouch3DViewer({
 
   // Pointer Drag Handler (Full 360-degree rotation)
   const handlePointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (isLoading) return;
     isDraggingRef.current = true;
     dragStartRef.current = { x: e.clientX, y: e.clientY };
     lastRotOnDownRef.current = { ...targetRotRef.current };
@@ -507,6 +508,7 @@ export default function BaladiPouch3DViewer({
   };
 
   const handlePointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    if (isLoading) return;
     if (isDraggingRef.current) {
       const deltaX = (e.clientX - dragStartRef.current.x) * 0.009;
       const deltaY = (e.clientY - dragStartRef.current.y) * 0.009;
@@ -546,6 +548,20 @@ export default function BaladiPouch3DViewer({
     setUserRotated(false);
   };
 
+  const previewImage =
+    mode === 'cats'
+      ? '/brand/pouch-cats.png'
+      : mode === 'dogs'
+      ? '/brand/pouch-dogs.png'
+      : '/brand/pouch-duo.png';
+
+  const previewAlt =
+    mode === 'cats'
+      ? (isRtl ? 'أكياس طعام بلدي للقطط' : 'Baladi Cat Food Pouches')
+      : mode === 'dogs'
+      ? (isRtl ? 'أكياس طعام بلدي للكلاب' : 'Baladi Dog Food Pouches')
+      : (isRtl ? 'أكياس طعام بلدي' : 'Baladi Food Pouches');
+
   return (
     <div
       ref={containerRef}
@@ -553,7 +569,9 @@ export default function BaladiPouch3DViewer({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerLeave}
-      className={`relative flex h-[460px] sm:h-[520px] md:h-[580px] w-full max-w-[580px] items-center justify-center cursor-grab active:cursor-grabbing select-none ${className}`}
+      className={`relative flex h-[460px] sm:h-[520px] md:h-[580px] w-full max-w-[580px] items-center justify-center ${
+        isLoading ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
+      } select-none ${className}`}
     >
       {/* Three.js Canvas */}
       <canvas
@@ -561,32 +579,39 @@ export default function BaladiPouch3DViewer({
         className="h-full w-full object-contain filter drop-shadow-[0_25px_40px_rgba(0,0,0,0.65)]"
       />
 
-      {/* Loading state indicator */}
-      {isLoading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-ink/40 backdrop-blur-xs rounded-3xl">
-          <Loader2 className="h-9 w-9 animate-spin text-baladi-yellow" />
-          <span className="text-xs font-black text-white tracking-wider">
-            {isRtl ? 'جاري تحميل المجسم ثلاثي الأبعاد...' : 'Loading 3D model...'}
+      {/* Static product preview image while 3D model loads */}
+      <div
+        className={`absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-500 ease-out z-10 ${
+          isLoading ? 'opacity-100' : 'opacity-0'
+        }`}
+        aria-hidden={!isLoading}
+      >
+        <img
+          src={previewImage}
+          alt={previewAlt}
+          className="max-h-[380px] sm:max-h-[440px] md:max-h-[480px] w-auto object-contain drop-shadow-[0_20px_35px_rgba(0,0,0,0.18)] pointer-events-none select-none"
+          loading="eager"
+        />
+      </div>
+
+      {/* 3D Control Pill & Reset Button (Visible only when 3D model is ready) */}
+      {!isLoading && (
+        <div className="absolute bottom-2 inset-x-0 flex items-center justify-center gap-2 pointer-events-none z-20 transition-opacity duration-300">
+          <span className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-ink/10 bg-white/90 px-3 py-1 text-[11px] font-black text-ink backdrop-blur-md shadow-md">
+            <Rotate3d className="h-3.5 w-3.5 text-baladi-yellow" />
+            <span>{isRtl ? 'اسحب لتدوير المجسم ٣٦٠°' : 'Drag to rotate 360°'}</span>
           </span>
+          {userRotated && (
+            <button
+              type="button"
+              onClick={handleResetRotation}
+              className="pointer-events-auto rounded-full border border-ink/10 bg-white/90 px-2.5 py-1 text-[10.5px] font-black text-baladi-red hover:bg-slate-100 backdrop-blur-md shadow-md transition-colors"
+            >
+              {isRtl ? 'إعادة ضبط' : 'Reset'}
+            </button>
+          )}
         </div>
       )}
-
-      {/* 3D Control Pill & Reset Button */}
-      <div className="absolute bottom-2 inset-x-0 flex items-center justify-center gap-2 pointer-events-none">
-        <span className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-ink/10 bg-white/90 px-3 py-1 text-[11px] font-black text-ink backdrop-blur-md shadow-md">
-          <Rotate3d className="h-3.5 w-3.5 text-baladi-yellow" />
-          <span>{isRtl ? 'اسحب لتدوير المجسم ٣٦٠°' : 'Drag to rotate 360°'}</span>
-        </span>
-        {userRotated && (
-          <button
-            type="button"
-            onClick={handleResetRotation}
-            className="pointer-events-auto rounded-full border border-ink/10 bg-white/90 px-2.5 py-1 text-[10.5px] font-black text-baladi-red hover:bg-slate-100 backdrop-blur-md shadow-md transition-colors"
-          >
-            {isRtl ? 'إعادة ضبط' : 'Reset'}
-          </button>
-        )}
-      </div>
     </div>
   );
 }

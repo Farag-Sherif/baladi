@@ -2,12 +2,18 @@ import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import './index.css';
-import { LangProvider, useLang } from './lib/lang';
+import { LangProvider } from './lib/lang';
 import Layout from './components/layout/Layout';
+import { Mark } from './components/brand/Ornaments';
 
 function AppSuspenseFallback() {
-  const { t } = useLang();
-  return <div className="grid min-h-screen place-items-center bg-white font-black text-ink">{t('بلدي', 'BALADI')}</div>;
+  return (
+    <div className="grid min-h-screen place-items-center bg-white">
+      <div className="flex flex-col items-center gap-4 animate-pulse">
+        <Mark tone="red" className="h-12 sm:h-14 w-auto" />
+      </div>
+    </div>
+  );
 }
 
 const Home = lazy(() => import('./pages/Home'));

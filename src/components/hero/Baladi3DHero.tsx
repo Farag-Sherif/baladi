@@ -317,17 +317,8 @@ export default function Baladi3DHero() {
       onMouseLeave={() => setIsPaused(false)}
       className="relative min-h-[94vh] lg:min-h-screen w-full overflow-hidden bg-white pt-24 pb-14 text-ink flex flex-col justify-between"
     >
-      {/* ── 3D AMBIENT ENVIRONMENT & GLOW LIGHTS ──────────────── */}
+      {/* ── 3D AMBIENT ENVIRONMENT & LIGHTS ──────────────── */}
       <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 z-0 h-full w-full opacity-40" />
-
-      {/* Dynamic Colored Spotlight responding to active mode */}
-      <motion.div
-        animate={{
-          background: `radial-gradient(circle at 65% 45%, ${activePack.glowColor} 0%, rgba(251, 187, 33, 0.05) 50%, transparent 75%)`,
-        }}
-        transition={{ duration: 0.6, ease: 'easeOut' }}
-        className="pointer-events-none absolute inset-0 z-0"
-      />
 
       <BaladiGridBackground opacity={0.03} />
 
@@ -507,13 +498,13 @@ export default function Baladi3DHero() {
           {/* ── REAL 3D INTERACTIVE PRODUCT SHOWROOM (7 cols on lg) ─── */}
           <div className="order-1 lg:order-2 lg:col-span-7 relative flex flex-col items-center justify-center">
             
-            {/* Glowing Floor Pedestal */}
+            {/* Floor Pedestal Shadow */}
             <div
-              className="pointer-events-none absolute bottom-4 h-44 w-80 sm:w-96 rounded-full opacity-60 transition-all duration-700 blur-[2px]"
+              className="pointer-events-none absolute bottom-4 h-44 w-80 sm:w-96 rounded-full opacity-40 transition-all duration-700 blur-[2px]"
               style={{
                 transform: 'rotateX(75deg) translateZ(-60px)',
-                background: `radial-gradient(ellipse at center, ${activePack.glowColor} 0%, rgba(35, 37, 79, 0.08) 60%, transparent 80%)`,
-                boxShadow: `0 0 40px ${activePack.glowColor}`,
+                background: 'radial-gradient(ellipse at center, rgba(35, 37, 79, 0.12) 0%, rgba(35, 37, 79, 0.04) 50%, transparent 75%)',
+                boxShadow: 'none',
               }}
             />
 
@@ -540,7 +531,7 @@ export default function Baladi3DHero() {
                         b.posClass
                       )}
                       style={{
-                        boxShadow: `0 12px 26px -8px rgba(35,37,79,0.12), 0 0 12px ${activePack.glowColor}`,
+                        boxShadow: '0 12px 26px -8px rgba(35,37,79,0.12)',
                       }}
                     >
                       <div
